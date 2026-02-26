@@ -48,8 +48,8 @@ struct WsTransportReceiver {
 impl TransportSender for WsTransportSender {
     async fn send(&mut self, packet: TransportPacket) -> Result<(), String> {
         let send_result = match String::from_utf8(packet.bytes.clone()) {
-            Ok(text) => self.sink.send(WsMessage::Text(text)).await,
-            Err(_) => self.sink.send(WsMessage::Binary(packet.bytes)).await,
+            Ok(text) => self.sink.send(WsMessage::Text(text.into())).await,
+            Err(_) => self.sink.send(WsMessage::Binary(packet.bytes.into())).await,
         };
 
         match send_result {
@@ -78,14 +78,14 @@ impl TransportReceiver for WsTransportReceiver {
             match frame {
                 WsMessage::Text(text) => {
                     return Ok(Some(TransportPacket::new(
-                        text.into_bytes(),
+                        text.to_string().into_bytes(),
                         TransportReliability::Reliable,
                         None,
                     )))
                 }
                 WsMessage::Binary(binary) => {
                     return Ok(Some(TransportPacket::new(
-                        binary,
+                        binary.to_vec(),
                         TransportReliability::Reliable,
                         None,
                     )))
