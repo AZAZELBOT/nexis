@@ -127,6 +127,7 @@ k6 run infra/load/k6-ws.js
 - Quickstart: [docs/QUICKSTART.md](docs/QUICKSTART.md)
 - Load Testing: [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md)
 - WASM Plugins: [docs/WASM_PLUGINS.md](docs/WASM_PLUGINS.md)
+- GitHub Pages docs: `https://triformine.github.io/nexis/`
 
 ## License
 
