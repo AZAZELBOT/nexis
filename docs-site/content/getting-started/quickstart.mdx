@@ -1,0 +1,48 @@
+---
+title: Quickstart
+description: From token to live state updates.
+---
+
+# Quickstart
+
+## 1. Start Nexis
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+## 2. Mint a Client Token
+
+Using dashboard (`http://localhost:5173`) or API:
+
+```bash
+curl -X POST http://localhost:3000/tokens \
+  -H "content-type: application/json" \
+  -d '{"project_id":"demo-project","key_id":"demo-key","ttl_seconds":3600}'
+```
+
+## 3. Connect and Join
+
+```ts
+const client = new NexisClient()
+await client.connect('ws://localhost:4000', {
+  projectId: 'demo-project',
+  token
+})
+
+const room = await client.joinOrCreate('counter_plugin_room', { room: 'default' })
+```
+
+## 4. Send Gameplay Action
+
+```ts
+room.send('inc', {})
+```
+
+## 5. Render Live State
+
+```ts
+room.onStateChange((state) => renderCounter(state.counter ?? 0))
+```
+
+That is the core gameplay loop you will reuse for most realtime features.

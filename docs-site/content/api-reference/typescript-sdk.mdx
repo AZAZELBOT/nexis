@@ -1,0 +1,51 @@
+---
+title: TypeScript SDK
+description: Client API for connect, rooms, state, RPC, and matchmaking.
+---
+
+# TypeScript SDK
+
+Package: `@nexis/sdk-ts`
+
+## Core Client
+
+```ts
+const client = new NexisClient()
+await client.connect(wsUrl, { projectId, token })
+```
+
+## Main APIs
+
+- `connect(url, { projectId?, token? })`
+- `joinOrCreate(roomType, options)`
+- `listRooms(roomType?)`
+- `enqueueMatchmaking(roomType, size)`
+- `dequeueMatchmaking()`
+- `onMatchFound(cb)`
+- `sendRPC(type, payload)`
+- `onEvent(type, cb)`
+
+## Room APIs
+
+- `room.state`
+- `room.onStateChange(cb)`
+- `room.onStateChange.once(cb)`
+- `room.onStateChange.select(path, cb)`
+- `room.send(type, payload)`
+- `room.sendBytes(type, bytes)`
+- `room.onMessage(type, cb)`
+
+## SDK Tests
+
+- patch apply
+- codec encode/decode (json + msgpack)
+- RPC resolution and unknown-rid guard
+- room message byte helpers
+
+Run:
+
+```bash
+cd sdks/ts
+bun test
+bunx tsc -p tsconfig.json --noEmit
+```

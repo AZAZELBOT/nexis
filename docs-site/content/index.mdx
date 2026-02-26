@@ -1,0 +1,39 @@
+---
+title: NEXIS
+description: Multiplayer backend for game developers.
+---
+
+# NEXIS
+
+Nexis gives you a multiplayer backend you can plug into your game without coupling to a specific engine.
+
+You use it for:
+
+- room lifecycle (`joinOrCreate`, leave, presence)
+- realtime messages (events + RPC)
+- state synchronization (snapshot + patch)
+- authentication and token verification
+- optional matchmaking and plugin-driven room logic
+
+## Who This Documentation Is For
+
+This documentation is focused on **using Nexis as a library/platform** in your game stack:
+
+- game client developers using `@nexis/sdk-ts`
+- backend developers minting client tokens
+- gameplay developers implementing room logic/plugins
+
+## Start Here
+
+1. [Getting Started](/getting-started/)
+2. [Quickstart](/getting-started/quickstart/)
+3. [Counter Room Tutorial](/tutorials/counter-room/)
+4. [TypeScript SDK API](/api-reference/typescript-sdk/)
+
+## Core Integration Model
+
+- Your game backend handles your user auth and mints short-lived Nexis tokens.
+- Game clients connect directly to Nexis data plane over WebSocket.
+- State and events flow room-by-room.
+
+This keeps gameplay traffic low-latency and avoids routing live packets through admin/control services.

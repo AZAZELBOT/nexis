@@ -1,0 +1,35 @@
+---
+title: State Synchronization
+description: How snapshots, patches, and acknowledgements work.
+---
+
+# State Synchronization
+
+Nexis syncs room state through two message types:
+
+- `state.snapshot`: full room state
+- `state.patch`: incremental update ops
+
+## Patch Shape
+
+```json
+{
+  "seq": 43,
+  "ops": [
+    { "op": "set", "path": "/counter", "value": 4 },
+    { "op": "del", "path": "/foo" }
+  ],
+  "checksum": "optional"
+}
+```
+
+## Client Responsibilities
+
+- apply patches in order (`seq`)
+- keep local state consistent
+- ack processed updates with `state.ack`
+- request `state.resync` if sequence gap or checksum mismatch
+
+## Initial State
+
+On successful room join, client receives `state.snapshot` so UI can render immediately.

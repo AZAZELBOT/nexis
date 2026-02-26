@@ -108,6 +108,14 @@ bun test
 bunx tsc --noEmit
 ```
 
+Docs site (Nextra, Node 20+ recommended):
+
+```bash
+cd docs-site
+bun install
+bun run dev
+```
+
 End-to-end smoke:
 
 ```bash
@@ -132,3 +140,4 @@ k6 run infra/load/k6-ws.js
 ## License
 
 Apache-2.0.
+

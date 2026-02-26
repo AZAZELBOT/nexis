@@ -1,0 +1,30 @@
+---
+title: Room Plugins
+description: Extend gameplay logic with Rust or WASM plugins.
+---
+
+# Room Plugins
+
+You can define room behavior through plugins instead of hardcoding every room in core server logic.
+
+## Option A: Rust Plugin
+
+Compile-time registration through room plugin API.
+
+Best when:
+
+- you control server deployment
+- you want maximum runtime performance and Rust-native tooling
+
+## Option B: WASM Plugin
+
+Runtime-loaded plugin via `NEXIS_WASM_ROOM_PLUGINS`.
+
+Best when:
+
+- you want to ship or swap room logic without rebuilding the server image
+- you want strict ABI boundary for gameplay scripts/modules
+
+Reference example:
+
+- `examples/wasm-plugins/counter_rust_plugin`

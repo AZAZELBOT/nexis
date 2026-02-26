@@ -1,0 +1,49 @@
+---
+title: Control API
+description: Project, key, token, and internal key-status endpoints.
+---
+
+# Control API
+
+Base URL (local): `http://localhost:3000`
+
+## Public Endpoints
+
+- `POST /projects`
+- `GET /projects`
+- `POST /projects/:id/keys`
+- `GET /projects/:id/keys`
+- `POST /projects/:id/keys/:keyId/revoke`
+- `POST /projects/:id/keys/:keyId/rotate`
+- `POST /tokens`
+- `GET /metrics`
+
+## Internal Endpoint
+
+- `GET /internal/key-status`
+
+Used by data plane during handshake to enforce key revoke/rotate/scope.
+
+## Token Payload
+
+```json
+{
+  "project_id": "...",
+  "issued_at": "2026-02-25T17:27:50.362Z",
+  "expires_at": "2026-02-25T18:27:50.362Z",
+  "key_id": "optional",
+  "aud": "optional"
+}
+```
+
+Token format:
+
+`base64url(claims).base64url(hmac_sha256(payload, secret))`
+
+## Database
+
+Control API uses Postgres and Drizzle migrations in:
+
+- `dashboard/control-api/drizzle/`
+
+Migrations run at startup in Docker/local workflows.

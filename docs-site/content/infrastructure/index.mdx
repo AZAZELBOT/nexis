@@ -1,0 +1,17 @@
+---
+title: Infrastructure Overview
+description: Deploying Nexis for your game environment.
+---
+
+# Infrastructure Overview
+
+Nexis is designed for self-hosting and hosted-ready patterns.
+
+Typical production shape:
+
+- data plane service (WebSocket)
+- control API service (token + key lifecycle)
+- Postgres for control-plane persistence
+- your own game backend that mints player tokens
+
+Gameplay traffic stays on data plane. Your game backend and control plane stay out of realtime packet flow.

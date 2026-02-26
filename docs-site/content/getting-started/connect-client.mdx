@@ -1,0 +1,25 @@
+---
+title: Connect a Client
+description: Establish a Nexis session from your game client.
+---
+
+# Connect a Client
+
+```ts
+import { NexisClient } from '@nexis/sdk-ts'
+
+const client = new NexisClient()
+
+await client.connect('ws://localhost:4000', {
+  projectId: 'your-project-id',
+  token: 'your-client-token'
+})
+```
+
+## Auth Modes
+
+- `required`: token required
+- `optional`: token optional (great for local prototyping)
+- `disabled`: no token checks (dev only)
+
+If the token includes `project_id`, your UI can derive project id directly from token claims and avoid user mismatch errors.

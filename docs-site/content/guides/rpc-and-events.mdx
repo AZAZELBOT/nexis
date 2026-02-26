@@ -1,0 +1,37 @@
+---
+title: RPC and Events
+description: Choosing between request/response and fire-and-forget.
+---
+
+# RPC and Events
+
+Use **RPC** for operations that need correlation and explicit success/failure.
+Use **events/messages** for gameplay broadcasts and fire-and-forget actions.
+
+## RPC Example
+
+```ts
+const response = await client.sendRPC('room.join_or_create', {
+  room_type: 'counter_plugin_room',
+  room: 'default'
+})
+```
+
+RPC uses `rid` under the hood.
+
+## Room Message Example
+
+```ts
+room.send('move', { x: 10, y: 4 })
+```
+
+Use room message handlers for lightweight gameplay actions.
+
+## Reliable vs Unreliable
+
+Nexis supports logical channel semantics over WebSocket:
+
+- reliable (default)
+- unreliable (drop-allowed under pressure)
+
+Use unreliable for high-frequency transient data (e.g. positions), reliable for authoritative actions.

@@ -1,0 +1,33 @@
+---
+title: Auth in Real Games
+description: Recommended token flow for production.
+---
+
+# Auth in Real Games
+
+Players should never call admin/control endpoints directly.
+
+## Recommended Flow
+
+1. Player authenticates against **your game backend**
+2. Your backend validates player identity/session
+3. Your backend mints a short-lived Nexis token via control API
+4. Client connects to Nexis data plane using this token
+
+## Why This Matters
+
+- keeps admin credentials off client devices
+- allows your game backend to control access policy
+- lets you attach game-specific claims/audience/TTL policy
+
+## Token Claims
+
+Typical fields:
+
+- `project_id`
+- `issued_at`
+- `expires_at`
+- optional `key_id`
+- optional `aud`
+
+Use short TTL for gameplay sessions and refresh on reconnect when needed.

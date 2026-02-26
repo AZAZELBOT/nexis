@@ -1,0 +1,55 @@
+---
+title: Create a Custom Room Plugin
+description: Add room logic without modifying the data-plane core.
+---
+
+# Create a Custom Room Plugin
+
+Nexis supports two plugin paths:
+
+- Rust room plugin registration at compile time
+- WASM room plugin loading at runtime
+
+## Runtime WASM Plugin (No Data-Plane Rebuild)
+
+Set env var:
+
+```bash
+NEXIS_WASM_ROOM_PLUGINS='{"duel_room":"/app/plugins/duel_room.wasm"}'
+```
+
+A plugin room can then be joined with room type `duel_room`.
+
+## ABI Overview
+
+Required exports:
+
+- `memory`
+- `alloc(len: i32) -> i32`
+- `nexis_initial_state() -> i64`
+
+Optional lifecycle hooks:
+
+- `nexis_on_create`
+- `nexis_on_join`
+- `nexis_on_message`
+- `nexis_on_tick`
+- `nexis_on_leave`
+- `nexis_on_dispose`
+
+Hook return payload JSON:
+
+```json
+{
+  "state": {},
+  "event": {}
+}
+```
+
+`state` and `event` are optional.
+
+## Reference Example
+
+- `examples/wasm-plugins/counter_rust_plugin`
+
+Detailed ABI and runtime behavior: [WASM Plugins](/plugins/wasm-plugins/).

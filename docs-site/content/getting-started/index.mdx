@@ -1,0 +1,32 @@
+---
+title: Getting Started
+description: First integration steps for clients and backend.
+---
+
+# Getting Started
+
+Use this section to connect your first client and ship a minimal multiplayer loop.
+
+## Prerequisites
+
+- A running Nexis stack (`ws://localhost:4000` for local)
+- A project id and client token (or `NEXIS_AUTH_MODE=optional` for local)
+- TypeScript SDK installed in your client app
+
+## Install SDK
+
+```bash
+bun add @nexis/sdk-ts
+```
+
+(or npm/pnpm/yarn equivalent)
+
+## Minimal Flow
+
+1. Connect client
+2. Join/create a room
+3. Subscribe to room state
+4. Send message (`room.send`) or RPC (`sendRPC`)
+5. React to state patches/events
+
+Continue with [Quickstart](/getting-started/quickstart/).

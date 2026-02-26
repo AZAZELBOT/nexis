@@ -1,0 +1,63 @@
+---
+title: Build a Counter Room
+description: From connect to state sync in one minimal loop.
+---
+
+# Build a Counter Room
+
+This tutorial walks through the full loop your game will use repeatedly:
+
+1. connect
+2. join room
+3. send room message
+4. receive patch
+5. update local UI state
+
+## Step 1: Connect with SDK
+
+```ts
+import { NexisClient } from '@nexis/sdk-ts'
+
+const client = new NexisClient()
+await client.connect('ws://localhost:4000', {
+  projectId,
+  token
+})
+```
+
+## Step 2: Join or Create Room
+
+```ts
+const room = await client.joinOrCreate('counter_plugin_room', { room: 'default' })
+```
+
+After join, the client should receive an initial `state.snapshot`.
+
+## Step 3: Listen to State Changes
+
+```ts
+room.onStateChange((state) => {
+  renderCounter(state.counter ?? 0)
+})
+```
+
+## Step 4: Send Increment Message
+
+```ts
+room.send('inc', {})
+```
+
+Server/plugin processes `room.message` and emits:
+
+- `state.patch` for new state
+- optional `rpc.response` when called through RPC wrapper
+
+## Step 5: Validate Correctness
+
+Expected behavior:
+
+- sequence (`seq`) increases monotonically
+- state checksum stays coherent when provided
+- reconnect with same `session_id` can resume room session within TTL
+
+For protocol details see [Protocol](/api-reference/protocol/).

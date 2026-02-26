@@ -1,0 +1,43 @@
+---
+title: Room Basics
+description: Join room, subscribe state, send messages.
+---
+
+# Room Basics
+
+## Join or Create
+
+```ts
+const room = await client.joinOrCreate('counter_plugin_room', { room: 'default' })
+```
+
+## Subscribe to State
+
+```ts
+room.onStateChange((state) => {
+  // update your game UI
+  console.log(state)
+})
+```
+
+## Send Room Messages
+
+```ts
+room.send('inc', {})
+```
+
+You can also send raw bytes:
+
+```ts
+room.sendBytes('custom-bytes', [1, 2, 3, 4])
+```
+
+## Receive Typed Messages
+
+```ts
+room.onMessage('powerup', (payload) => {
+  console.log(payload)
+})
+```
+
+Room-level state and message channels are isolated per room id.

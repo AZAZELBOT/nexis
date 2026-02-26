@@ -1,0 +1,81 @@
+---
+title: Protocol
+description: Envelope, handshake, channels, RPC, and state sync format.
+---
+
+# Protocol
+
+## Message Envelope
+
+```json
+{
+  "v": 1,
+  "t": "message.type",
+  "rid": "optional-request-id",
+  "room": "optional-room-id",
+  "p": {}
+}
+```
+
+- `v`: protocol version (`1`)
+- `t`: message type (required)
+- `rid`: request/response correlation id (optional)
+- `room`: room id (optional)
+- `p`: payload (optional)
+
+## Handshake
+
+Client sends JSON handshake first:
+
+```json
+{
+  "v": 1,
+  "codecs": ["msgpack", "json"],
+  "project_id": "demo-project",
+  "token": "...",
+  "session_id": "optional"
+}
+```
+
+Server validates version, applies auth mode, negotiates codec, and responds `handshake.ok`.
+
+## Channels
+
+Logical channels over WebSocket:
+
+- `reliable` (default)
+- `unreliable` (drop-allowed under pressure)
+
+## State Sync Messages
+
+- `state.snapshot` full state with `seq` and `checksum`
+- `state.patch` incremental ops (`set`/`del`)
+- `state.ack` client ack
+- `state.resync` client asks fresh snapshot
+
+Patch payload example:
+
+```json
+{
+  "seq": 43,
+  "ops": [
+    { "op": "set", "path": "/counter", "value": 4 },
+    { "op": "del", "path": "/foo" }
+  ]
+}
+```
+
+## RPC and Room Calls
+
+Common calls:
+
+- `room.join_or_create`
+- `room.leave`
+- `room.list`
+- `room.message`
+- `matchmaking.enqueue`
+- `matchmaking.dequeue`
+
+Unknown `rid` is rejected by RPC tracker.
+
+For full canonical protocol spec, see source doc: `docs/PROTOCOL.md`.

@@ -1,0 +1,23 @@
+---
+title: Runtime Configuration
+description: High-impact environment variables.
+---
+
+# Runtime Configuration
+
+Common data-plane variables:
+
+- `NEXIS_AUTH_MODE` (`required|optional|disabled`)
+- `NEXIS_ROOM_TICK_MS`
+- `NEXIS_STATE_SNAPSHOT_EVERY_PATCHES`
+- `NEXIS_STATE_PATCH_CHECKSUM_EVERY_PATCHES`
+- `NEXIS_MATCHMAKING_TICKET_TTL_SECONDS`
+- `NEXIS_WASM_ROOM_PLUGINS`
+- `NEXIS_ROOM_TYPE_PLUGINS`
+
+Control-plane variables:
+
+- `DATABASE_URL`
+- internal auth token for key-status bridge
+
+Start with defaults, then tune based on load tests and game behavior.
