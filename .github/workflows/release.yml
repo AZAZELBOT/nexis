@@ -497,6 +497,9 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: |
+            rust-server-*
+            control-api-*
           path: release-artifacts
           merge-multiple: true
       - name: Publish GitHub release assets
