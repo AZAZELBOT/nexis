@@ -1,0 +1,105 @@
+---
+title: Quickstart
+description: Start stack, mint token, connect client, join room, send action.
+---
+
+# Quickstart
+
+This is the shortest end-to-end path that proves your setup is correct.
+
+## 1. Start the stack
+
+```bash
+docker compose -f infra/docker-compose.yml up --build
+```
+
+Local endpoints:
+
+- control API: `http://localhost:3000`
+- dashboard: `http://localhost:5173`
+- data plane websocket: `ws://localhost:4000`
+
+## 2. Create project and key
+
+Use the dashboard UI at `http://localhost:5173`:
+
+1. Create Project
+2. Create API Key for that project
+
+Or use control API endpoints from your backend.
+
+## 3. Mint client token
+
+From dashboard (recommended for first run), or API:
+
+```bash
+curl -X POST http://localhost:3000/tokens \
+  -H "content-type: application/json" \
+  -d '{"project_id":"<project-id>","key_id":"<key-id>","ttl_seconds":3600}'
+```
+
+## 4. Connect and join room
+
+```ts
+import { connect } from "@triformine/nexis-sdk";
+
+const client = await connect("ws://localhost:4000", {
+  projectId: "<project-id>",
+  token
+});
+
+const room = await client.joinOrCreate("counter_plugin_room", { roomId: "counter_plugin_room:default" });
+```
+
+## 5. Read initial state and react to patches
+
+```ts
+room.onStateChange((state) => {
+  console.log("counter:", state.counter);
+});
+```
+
+## 6. Send gameplay action
+
+```ts
+room.send("inc", { by: 1 });
+```
+
+Expected result:
+
+- room join succeeds
+- you receive `state.snapshot` first
+- each increment produces `state.patch`
+
+If this fails, check [Connect a Client](/docs/getting-started/connect-client/) and [Auth in Real Games](/docs/getting-started/authentication/).
+
+
+## Quickstart Flow
+
+```mermaid
+flowchart LR
+  A[Start stack] --> B[Create project/key]
+  B --> C[Mint token]
+  C --> D[Connect client]
+  D --> E[Join room]
+```
+
+
+## Typed Quickstart Client
+
+```ts twoslash
+type Room = { send(type: string, payload: unknown): void };
+type Client = { joinOrCreate(roomType: string, options: { room: string }): Promise<Room> };
+declare function connect(url: string, options: { projectId: string; token: string }): Promise<Client>;
+
+// ---cut-before---
+async function quickstart() {
+  const client = await connect('ws://localhost:4000', {
+    projectId: 'demo-project',
+    token: 'token',
+  });
+
+  const room = await client.joinOrCreate('counter_plugin_room', { room: 'counter_plugin_room:default' });
+  room.send('inc', { by: 1 });
+}
+```

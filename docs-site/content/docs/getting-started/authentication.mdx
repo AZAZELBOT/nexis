@@ -1,0 +1,89 @@
+---
+title: Auth in Real Games
+description: Recommended token flow for production.
+---
+
+# Auth in Real Games
+
+Players should never call admin/control endpoints directly from client apps.
+
+## Recommended Flow
+
+1. Player authenticates against your game backend.
+2. Backend validates identity/session.
+3. Backend mints short-lived Nexis token using control API.
+4. Client connects to Nexis data plane with that token.
+
+## Why this architecture is required
+
+- Keeps project secrets and key lifecycle off the client.
+- Lets you enforce your own access policy before gameplay connect.
+- Supports refresh/reissue and revocation strategies.
+
+## Token claims
+
+Nexis token payload includes:
+
+- `project_id`
+- `issued_at`
+- `expires_at`
+
+Optional fields (if you use them in your backend flow):
+
+- `key_id`
+- `aud`
+
+## Auth modes in Nexis runtime
+
+- `required`: token must be valid.
+- `optional`: token accepted when present; anonymous allowed.
+- `disabled`: skip auth checks entirely.
+
+Use `required` in production.  
+`optional` and `disabled` are mainly for local development and testing.
+
+## Backend mint example
+
+```bash
+curl -X POST http://localhost:3000/tokens \
+  -H "content-type: application/json" \
+  -d '{"project_id":"<project-id>","key_id":"<key-id>","ttl_seconds":900}'
+```
+
+
+## Auth Handshake Flow
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant B as Backend
+  participant A as Control API
+  participant D as Data Plane
+  B->>A: POST /tokens
+  A-->>B: signed token
+  B-->>C: token
+  C->>D: handshake(project_id, token)
+  D-->>C: handshake.ok or auth error
+```
+
+
+## Typed Token Claims
+
+```ts twoslash
+type TokenClaims = {
+  project_id: string;
+  issued_at: string;
+  expires_at: string;
+  key_id?: string;
+  aud?: string;
+};
+
+// ---cut-before---
+const claims: TokenClaims = {
+  project_id: 'demo-project',
+  issued_at: new Date().toISOString(),
+  expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  key_id: 'demo-key',
+};
+```

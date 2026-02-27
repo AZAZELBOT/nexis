@@ -41,7 +41,7 @@ nexis/
   dashboard/ui/          # Dashboard UI
   examples/web-demo/     # Counter room demo app
   infra/                 # Docker Compose + smoke checks
-  docs/                  # Protocol, architecture, quickstart
+  docs-site/             # Fumadocs documentation site
 ```
 
 ## Quick Start
@@ -90,7 +90,7 @@ Then:
 4. Open web demo
 5. Connect + join `counter_plugin_room`
 
-Detailed step-by-step: [docs/QUICKSTART.md](docs/QUICKSTART.md)
+Detailed step-by-step: <https://triformine.github.io/nexis/docs/getting-started/quickstart/>
 
 ## Local Development
 
@@ -117,7 +117,7 @@ bun test
 bunx tsc --noEmit
 ```
 
-Docs site (Nextra, Node 20+ recommended):
+Docs site (Fumadocs, Node 20+ recommended):
 
 ```bash
 cd docs-site
@@ -139,12 +139,12 @@ k6 run infra/load/k6-ws.js
 
 ## Protocol + Docs
 
-- Protocol: [docs/PROTOCOL.md](docs/PROTOCOL.md)
-- Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- Quickstart: [docs/QUICKSTART.md](docs/QUICKSTART.md)
-- Load Testing: [docs/LOAD_TESTING.md](docs/LOAD_TESTING.md)
-- WASM Plugins: [docs/WASM_PLUGINS.md](docs/WASM_PLUGINS.md)
-- GitHub Pages docs: `https://triformine.github.io/nexis/`
+- Protocol: <https://triformine.github.io/nexis/docs/api-reference/protocol/>
+- Quickstart: <https://triformine.github.io/nexis/docs/getting-started/quickstart/>
+- SDK TypeScript: <https://triformine.github.io/nexis/docs/sdks/typescript/>
+- Infrastructure: <https://triformine.github.io/nexis/docs/infrastructure/>
+- Room Plugins: <https://triformine.github.io/nexis/docs/guides/plugins/>
+- GitHub Pages docs: <https://triformine.github.io/nexis/>
 
 ## Release + Project Policies
 

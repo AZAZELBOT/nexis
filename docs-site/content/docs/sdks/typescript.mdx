@@ -1,0 +1,135 @@
+---
+title: TypeScript SDK
+description: Client API for connect, rooms, state, RPC, and matchmaking.
+---
+
+# TypeScript SDK
+
+Package: `@triformine/nexis-sdk`
+
+## Create and connect client
+
+```ts twoslash
+type ConnectOptions = {
+  projectId?: string;
+  token?: string;
+};
+
+type NexisRoom = {
+  send(type: string, payload: unknown): void;
+  onMessage<T>(type: string, cb: (payload: T) => void): void;
+  onStateChange(cb: (state: unknown) => void): void;
+};
+
+type NexisClient = {
+  joinOrCreate(roomType: string, options: { room?: string }): Promise<NexisRoom>;
+  sendRPC<TResponse>(type: string, payload: unknown): Promise<TResponse>;
+};
+
+declare function connect(url: string, options: ConnectOptions): Promise<NexisClient>;
+
+// ---cut-before---
+async function bootstrap(wsUrl: string, projectId: string, token: string) {
+  const client = await connect(wsUrl, { projectId, token });
+  const room = await client.joinOrCreate("counter_plugin_room", { room: "default" });
+
+  room.onStateChange((state) => {
+    console.log("state update", state);
+  });
+}
+```
+
+## `NexisClient` methods
+
+- `connect(url, { projectId?, token? })`
+- `NexisClient.connect(url, { projectId?, token? })`
+- `joinOrCreate(roomType, options)`
+- `listRooms(roomType?)`
+- `enqueueMatchmaking(roomType, size)`
+- `dequeueMatchmaking()`
+- `onMatchFound(cb)`
+- `sendRPC(type, payload)`
+- `onEvent(type, cb)`
+
+## `NexisRoom` methods
+
+- `room.state`
+- `room.onStateChange(cb)`
+- `room.onStateChange.once(cb)`
+- `room.onStateChange.select(path, cb)`
+- `room.send(type, payload)`
+- `room.sendBytes(type, bytes)`
+- `room.onMessage(type, cb)`
+
+## Custom message types
+
+You can send any room message type name:
+
+```ts twoslash
+type GameMessageMap = {
+  "player.move": { x: number; y: number; seq: number };
+  "weapon.fire": { weaponId: string; tick: number };
+};
+
+function sendTyped<K extends keyof GameMessageMap>(type: K, payload: GameMessageMap[K]) {
+  console.log(type, payload);
+}
+
+// ---cut-before---
+sendTyped("player.move", { x: 12, y: 4, seq: 91 });
+sendTyped("weapon.fire", { weaponId: "smg", tick: 12345 });
+```
+
+In room/plugin logic, handle via `input.type` and `input.data`.
+
+## RPC usage
+
+```ts twoslash
+type JoinOrCreateResponse = {
+  room: string;
+  created: boolean;
+};
+
+declare const client: {
+  sendRPC<TResponse>(type: string, payload: unknown): Promise<TResponse>;
+};
+
+// ---cut-before---
+async function join() {
+  const res = await client.sendRPC<JoinOrCreateResponse>("room.join_or_create", {
+    room_type: "counter_plugin_room",
+    room: "default",
+  });
+
+  console.log(res.room, res.created);
+}
+```
+
+RPC is for request/response workflows.  
+`room.send` is for gameplay action/event streams.
+
+## Quality checks
+
+- patch apply
+- codec encode/decode (json + msgpack)
+- RPC resolution and unknown-rid guard
+- room message byte helpers
+
+Run:
+
+```bash
+cd sdks/ts
+bun test
+bunx tsc -p tsconfig.json --noEmit
+```
+
+
+## TypeScript SDK Runtime Flow
+
+```mermaid
+flowchart LR
+  A[connect] --> B[joinOrCreate]
+  B --> C[onStateChange]
+  C --> D[room.send]
+  D --> E[onMessage]
+```

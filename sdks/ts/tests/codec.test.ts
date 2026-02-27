@@ -15,7 +15,7 @@ const message = {
 function loadFixture(name: string): Envelope {
   const fixturePath = join(
     import.meta.dir,
-    "../../../docs/fixtures/protocol",
+    "../../../docs-site/fixtures/protocol",
     name,
   );
   return JSON.parse(readFileSync(fixturePath, "utf8")) as Envelope;

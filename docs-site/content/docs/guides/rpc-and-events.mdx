@@ -1,0 +1,83 @@
+---
+title: RPC and Events
+description: Choosing between request/response and fire-and-forget.
+---
+
+# RPC and Events
+
+Use **RPC** for operations that need correlation and explicit success/failure.
+Use **events/messages** for gameplay broadcasts and fire-and-forget actions.
+
+## Use RPC when
+
+- you need success/failure response
+- you need request correlation (`rid`)
+- operation is not high-frequency
+
+## Use room messages when
+
+- action is high-frequency gameplay input
+- you do not need one response per action
+- logic is room-scoped
+
+## RPC example
+
+```ts
+const response = await client.sendRPC("room.join_or_create", {
+  room_type: "counter_plugin_room",
+  room: "default",
+});
+```
+
+## Room message example
+
+```ts
+room.send("player.move", { x: 10, y: 4, seq: 18 });
+```
+
+## Reliable vs unreliable
+
+Nexis supports logical channel semantics over WebSocket:
+
+- reliable: authoritative actions, confirmations, inventory, game results
+- unreliable: transient updates like position/aim/input deltas
+
+Practical split:
+
+- `player.move` -> often unreliable
+- `attack.commit` or `purchase.confirm` -> reliable
+
+
+## RPC vs Events
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client
+  participant S as Server
+  C->>S: rpc.request(rid)
+  S-->>C: rpc.response(rid)
+  S-->>C: room.message(event)
+```
+
+
+## Typed RPC Request
+
+```ts twoslash
+type RpcRequest = { type: string; payload: unknown };
+type RpcResponse<T> = { rid: string; ok: boolean; result?: T; error?: string };
+
+async function sendRpc<T>(request: RpcRequest): Promise<RpcResponse<T>> {
+  return { rid: '1', ok: true } as RpcResponse<T>;
+}
+
+// ---cut-before---
+async function run() {
+  const res = await sendRpc<{ room: string }>({
+    type: 'room.join_or_create',
+    payload: { room_type: 'counter_plugin_room', room: 'default' },
+  });
+
+  if (res.ok && res.result) console.log(res.result.room);
+}
+```

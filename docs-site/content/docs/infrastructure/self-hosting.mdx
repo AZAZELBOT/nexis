@@ -1,0 +1,62 @@
+---
+title: Self-Hosting
+description: Run Nexis with Docker in development and production.
+---
+
+# Self-Hosting
+
+## Local
+
+```bash
+docker compose -f infra/docker-compose.yml up -d --build --wait
+```
+
+## Production Notes
+
+- terminate TLS at edge/proxy (nginx, caddy, cloud LB)
+- route WebSocket upgrade traffic to data plane
+- keep control API behind backend/admin paths
+- store secrets in managed secret store (not plaintext env in CI)
+- use rolling deployments with health checks
+
+## Recommended Split
+
+- public internet: data plane WS endpoint
+- private/internal: control API + Postgres
+
+
+## Self-host Topology
+
+```mermaid
+flowchart TD
+  subgraph Edge
+    LB[Load Balancer]
+  end
+  subgraph Services
+    DP[Data Plane]
+    CP[Control API]
+    DB[(Postgres)]
+  end
+  LB --> DP
+  LB --> CP
+  CP --> DB
+  CP --> DP
+```
+
+
+## Typed Compose Service Map
+
+```ts twoslash
+type ComposeServices = {
+  postgres: { port: number };
+  controlApi: { port: number };
+  rustServer: { port: number };
+};
+
+// ---cut-before---
+const services: ComposeServices = {
+  postgres: { port: 5432 },
+  controlApi: { port: 3000 },
+  rustServer: { port: 4000 },
+};
+```

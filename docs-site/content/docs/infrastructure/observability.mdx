@@ -1,0 +1,52 @@
+---
+title: Observability
+description: Metrics endpoints and baseline checks.
+---
+
+# Observability
+
+## Metrics Endpoints
+
+- Data plane: `GET /metrics` on `:9100` (default)
+- Control API: `GET /metrics` on `:3000`
+
+## What to Track
+
+- connect/handshake latency
+- join latency
+- room message RTT
+- websocket errors
+- reconnect/resume success rate
+
+## Baseline Testing
+
+Use included k6 scenario:
+
+```bash
+k6 run infra/load/k6-ws.js
+```
+
+Run it regularly after protocol or room-logic changes.
+
+
+## Telemetry Pipeline
+
+```mermaid
+flowchart LR
+  A[Data Plane /metrics] --> P[Prometheus]
+  B[Control API /metrics] --> P
+  P --> G[Grafana]
+```
+
+
+## Typed Metrics Snapshot
+
+```ts twoslash
+type MetricSample = { name: string; value: number; labels?: Record<string, string> };
+
+// ---cut-before---
+const samples: MetricSample[] = [
+  { name: 'nexis_handshake_total', value: 42 },
+  { name: 'nexis_ws_errors_total', value: 0 },
+];
+```

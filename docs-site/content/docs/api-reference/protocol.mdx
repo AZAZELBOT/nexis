@@ -1,0 +1,153 @@
+---
+title: Protocol
+description: Envelope, handshake, channels, RPC, and state sync format.
+---
+
+# Protocol
+
+## Envelope
+
+```json
+{
+  "v": 1,
+  "t": "message.type",
+  "rid": "optional-request-id",
+  "room": "optional-room-id",
+  "p": {}
+}
+```
+
+- `v`: protocol version (`1`)
+- `t`: message type (required)
+- `rid`: request/response correlation id (optional)
+- `room`: room id (optional)
+- `p`: payload (optional)
+
+## Handshake
+
+Client first message is always JSON handshake:
+
+```json
+{
+  "v": 1,
+  "codecs": ["msgpack", "json"],
+  "project_id": "demo-project",
+  "token": "...",
+  "session_id": "optional"
+}
+```
+
+Server does:
+
+1. protocol version validation
+2. auth check (based on auth mode)
+3. codec negotiation (`msgpack` preferred if both support)
+4. `handshake.ok` response
+
+## Handshake flow
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client SDK
+  participant D as Data Plane
+  C->>D: WS connect
+  C->>D: JSON handshake(v, codecs, project_id, token, session_id?)
+  D->>D: Validate version + auth
+  D->>D: Negotiate codec (msgpack/json)
+  D-->>C: handshake.ok(codec, session_id, resumed)
+  C->>D: room.join_or_create / room.message
+```
+
+## Channels
+
+Logical channels over WebSocket:
+
+- `reliable` (default)
+- `unreliable` (drop-allowed under pressure)
+
+## State Sync Messages
+
+- `state.snapshot` full state with `seq` and `checksum`
+- `state.patch` incremental ops (`set`/`del`)
+- `state.ack` client ack
+- `state.resync` client asks fresh snapshot
+
+Patch payload:
+
+```json
+{
+  "seq": 43,
+  "ops": [
+    { "op": "set", "path": "/counter", "value": 4 },
+    { "op": "del", "path": "/foo" }
+  ]
+}
+```
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant S as Server
+  participant C as Client
+  S-->>C: state.snapshot(seq=42, checksum)
+  S-->>C: state.patch(seq=43, ops)
+  C->>C: Apply patch + verify ordering/checksum
+  C-->>S: state.ack(seq=43)
+  C-->>S: state.resync (only if mismatch/gap)
+  S-->>C: state.snapshot(seq=latest, checksum)
+```
+
+## Room message payload contract
+
+When sending custom room messages (`t = "room.message"`), payload shape is:
+
+```json
+{
+  "type": "player.move",
+  "data": { "x": 10, "y": 4, "seq": 18 }
+}
+```
+
+Binary variant (`t = "room.message.bytes"`) uses:
+
+```json
+{
+  "type": "voice.chunk",
+  "data_b64": "..."
+}
+```
+
+## Common call types
+
+- room: `room.join_or_create`, `room.leave`, `room.list`, `room.message`
+- matchmaking: `matchmaking.enqueue`, `matchmaking.dequeue`
+- state: `state.snapshot`, `state.patch`, `state.ack`, `state.resync`
+- rpc: `rpc.request`, `rpc.response`
+
+Unknown `rid` is rejected by RPC tracker.
+
+
+## Typed Envelope Validation
+
+```ts twoslash
+type Envelope = {
+  v: 1;
+  t: string;
+  rid?: string;
+  room?: string;
+  p?: unknown;
+};
+
+function isEnvelope(value: unknown): value is Envelope {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return v.v === 1 && typeof v.t === 'string' && v.t.length > 0;
+}
+
+// ---cut-before---
+const packet: unknown = { v: 1, t: 'state.patch', p: { seq: 10, ops: [] } };
+if (isEnvelope(packet)) {
+  console.log(packet.t);
+}
+```

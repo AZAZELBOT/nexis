@@ -1,0 +1,3 @@
+{
+  "pages": ["compatibility-and-versioning", "state-sync", "rpc-and-events", "error-reference", "matchmaking", "plugins"]
+}

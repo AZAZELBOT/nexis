@@ -6,10 +6,10 @@ use serde_json::json;
 
 fn message_fixtures() -> Vec<Message> {
     let with_checksum =
-        include_str!("../../../../docs/fixtures/protocol/state_patch_v1_with_checksum.json");
+        include_str!("../../../../docs-site/fixtures/protocol/state_patch_v1_with_checksum.json");
     let without_checksum =
-        include_str!("../../../../docs/fixtures/protocol/state_patch_v1_without_checksum.json");
-    let snapshot = include_str!("../../../../docs/fixtures/protocol/state_snapshot_v1.json");
+        include_str!("../../../../docs-site/fixtures/protocol/state_patch_v1_without_checksum.json");
+    let snapshot = include_str!("../../../../docs-site/fixtures/protocol/state_snapshot_v1.json");
 
     vec![
         serde_json::from_str(with_checksum).expect("fixture should decode"),

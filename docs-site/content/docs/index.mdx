@@ -1,0 +1,81 @@
+---
+title: NEXIS
+description: Engine-agnostic multiplayer backend for realtime games.
+---
+
+# NEXIS
+
+Nexis is the multiplayer layer between your game clients and your gameplay logic.
+
+- Data plane (Rust): rooms, RPC, state sync, matchmaking, plugins, low-latency traffic.
+- Control plane (Bun/Elysia): projects, keys, token minting, operations.
+
+Gameplay packets go client -> data plane directly.  
+Control plane is for management, not realtime traffic.
+
+## What You Can Build
+
+- Coop games with shared state (`state.snapshot` + `state.patch`)
+- Session-based games with room matchmaking
+- Fast action loops with custom room messages (`room.send("player.move", ...)`)
+- Authoritative room logic in plugins (Rust or WASM)
+
+## Read This In Order
+
+1. [Quickstart](/docs/getting-started/quickstart/)
+2. [Connect a Client](/docs/getting-started/connect-client/)
+3. [Auth in Real Games](/docs/getting-started/authentication/)
+4. [Room Basics](/docs/getting-started/room-basics/)
+5. [Counter Room Tutorial](/docs/tutorials/counter-room/)
+6. [Custom Room Plugin Tutorial](/docs/tutorials/custom-room-plugin/)
+
+## Core Concepts
+
+- `Project`: top-level tenant
+- `Key`: signing credential attached to a project
+- `Token`: short-lived client credential
+- `Room Type`: gameplay behavior class (example: `counter_plugin_room`)
+- `Room`: concrete instance (example: `counter_plugin_room:default`)
+- `Message Type`: your custom gameplay action/event type (example: `player.move`)
+
+## SDK At A Glance
+
+```ts
+import { connect } from "@triformine/nexis-sdk";
+
+const client = await connect("ws://localhost:4000", { projectId, token });
+
+const room = await client.joinOrCreate("counter_plugin_room", { roomId: "counter_plugin_room:default" });
+room.onStateChange((state) => render(state));
+room.send("inc", { by: 1 });
+```
+
+
+## Architecture Snapshot
+
+```mermaid
+flowchart LR
+  C[Game Clients] --> D[Rust Data Plane]
+  O[Control API] --> D
+  O --> P[(Postgres)]
+  D --> M[Metrics]
+```
+
+
+## Typed Bootstrap Example
+
+```ts twoslash
+type ConnectOptions = { projectId: string; token: string };
+type Client = { joinOrCreate(roomType: string, options: { room: string }): Promise<void> };
+declare function connect(url: string, options: ConnectOptions): Promise<Client>;
+
+// ---cut-before---
+async function boot() {
+  const client = await connect('ws://localhost:4000', {
+    projectId: 'demo-project',
+    token: 'token',
+  });
+
+  await client.joinOrCreate('counter_plugin_room', { room: 'counter_plugin_room:default' });
+}
+```

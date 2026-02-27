@@ -1,0 +1,54 @@
+---
+title: Runtime Configuration
+description: High-impact environment variables.
+---
+
+# Runtime Configuration
+
+Common data-plane variables:
+
+- `NEXIS_AUTH_MODE` (`required|optional|disabled`)
+- `NEXIS_ROOM_TICK_MS`
+- `NEXIS_STATE_SNAPSHOT_EVERY_PATCHES`
+- `NEXIS_STATE_PATCH_CHECKSUM_EVERY_PATCHES`
+- `NEXIS_MATCHMAKING_TICKET_TTL_SECONDS`
+- `NEXIS_WASM_ROOM_PLUGINS`
+- `NEXIS_ROOM_TYPE_PLUGINS`
+
+Control-plane variables:
+
+- `DATABASE_URL`
+- internal auth token for key-status bridge
+
+Start with defaults, then tune based on load tests and game behavior.
+
+
+## Runtime Config Loading
+
+```mermaid
+flowchart LR
+  A[Environment Variables] --> B[Parse + validate]
+  B --> C[Runtime config struct]
+  C --> D[Server startup]
+```
+
+
+## Typed Config Parser
+
+```ts twoslash
+type RuntimeConfig = {
+  authMode: 'required' | 'optional' | 'disabled';
+  roomTickMs: number;
+};
+
+function parseConfig(env: Record<string, string | undefined>): RuntimeConfig {
+  return {
+    authMode: (env.NEXIS_AUTH_MODE as RuntimeConfig['authMode']) ?? 'required',
+    roomTickMs: Number(env.NEXIS_ROOM_TICK_MS ?? '100'),
+  };
+}
+
+// ---cut-before---
+const config = parseConfig({ NEXIS_AUTH_MODE: 'optional', NEXIS_ROOM_TICK_MS: '50' });
+console.log(config.roomTickMs);
+```

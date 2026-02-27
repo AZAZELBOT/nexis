@@ -2,7 +2,7 @@ use protocol::{Handshake, Message, DEFAULT_MAX_PAYLOAD_BYTES};
 
 #[test]
 fn handshake_fixture_decodes() {
-    let raw = include_str!("../../../../docs/fixtures/protocol/handshake_v1.json");
+    let raw = include_str!("../../../../docs-site/fixtures/protocol/handshake_v1.json");
     let handshake: Handshake = serde_json::from_str(raw).expect("fixture should decode");
 
     assert_eq!(handshake.v, 1);
@@ -16,7 +16,8 @@ fn handshake_fixture_decodes() {
 
 #[test]
 fn state_patch_with_checksum_fixture_validates() {
-    let raw = include_str!("../../../../docs/fixtures/protocol/state_patch_v1_with_checksum.json");
+    let raw =
+        include_str!("../../../../docs-site/fixtures/protocol/state_patch_v1_with_checksum.json");
     let message: Message = serde_json::from_str(raw).expect("fixture should decode");
     message
         .validate(DEFAULT_MAX_PAYLOAD_BYTES)
@@ -25,8 +26,9 @@ fn state_patch_with_checksum_fixture_validates() {
 
 #[test]
 fn state_patch_without_checksum_fixture_validates() {
-    let raw =
-        include_str!("../../../../docs/fixtures/protocol/state_patch_v1_without_checksum.json");
+    let raw = include_str!(
+        "../../../../docs-site/fixtures/protocol/state_patch_v1_without_checksum.json"
+    );
     let message: Message = serde_json::from_str(raw).expect("fixture should decode");
     message
         .validate(DEFAULT_MAX_PAYLOAD_BYTES)

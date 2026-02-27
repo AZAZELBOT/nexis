@@ -12,7 +12,7 @@ import type { PatchOp } from "../src/types";
 function readProtocolFixture(name: string): unknown {
   const fixturePath = join(
     import.meta.dir,
-    "../../../docs/fixtures/protocol",
+    "../../../docs-site/fixtures/protocol",
     name,
   );
   return JSON.parse(readFileSync(fixturePath, "utf8")) as unknown;

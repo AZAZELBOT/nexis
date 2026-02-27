@@ -1,0 +1,3 @@
+{
+  "pages": ["index", "quickstart", "game-loop", "connect-client", "room-basics", "authentication"]
+}

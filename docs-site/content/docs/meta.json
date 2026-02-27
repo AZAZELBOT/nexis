@@ -1,0 +1,12 @@
+{
+  "title": "NEXIS",
+  "pages": [
+    "index",
+    "getting-started",
+    "tutorials",
+    "guides",
+    "sdks",
+    "api-reference",
+    "infrastructure"
+  ]
+}

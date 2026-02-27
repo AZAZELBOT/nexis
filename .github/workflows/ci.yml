@@ -34,7 +34,6 @@ jobs:
               - 'dashboard/control-api/**'
             docs_site:
               - 'docs-site/**'
-              - 'docs/**'
               - 'README.md'
             compose:
               - 'infra/**'

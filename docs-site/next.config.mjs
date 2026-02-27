@@ -1,19 +1,20 @@
-import nextra from 'nextra'
+import { createMDX } from "fumadocs-mdx/next";
 
-const withNextra = nextra({})
-
-const isProduction = process.env.NODE_ENV === 'production'
-const basePath = isProduction ? '/nexis' : ''
+const withMDX = createMDX();
+const isProduction = process.env.NODE_ENV === "production";
+const basePath = isProduction ? "/nexis" : "";
 
 /** @type {import('next').NextConfig} */
-const nextConfig = {
-  output: 'export',
-  images: {
-    unoptimized: true
-  },
+const config = {
+  output: "export",
+  reactStrictMode: true,
+  serverExternalPackages: ["typescript", "twoslash"],
   trailingSlash: true,
   basePath,
-  assetPrefix: basePath || undefined
-}
+  assetPrefix: basePath || undefined,
+  images: {
+    unoptimized: true,
+  },
+};
 
-export default withNextra(nextConfig)
+export default withMDX(config);

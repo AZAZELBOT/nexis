@@ -1,0 +1,74 @@
+---
+title: Connect a Client
+description: Establish a session, negotiate codec, and join your first room.
+---
+
+# Connect a Client
+
+## Basic connection
+
+```ts twoslash
+type ConnectOptions = {
+  projectId: string;
+  token: string;
+};
+
+type NexisRoom = {
+  send(type: string, payload: unknown): void;
+  onMessage<T>(type: string, cb: (payload: T) => void): void;
+};
+
+type NexisClient = {
+  joinOrCreate(roomType: string, options: { room: string }): Promise<NexisRoom>;
+};
+
+declare function connect(url: string, options: ConnectOptions): Promise<NexisClient>;
+
+// ---cut-before---
+async function start() {
+  const client = await connect("ws://localhost:4000", {
+    projectId: "your-project-id",
+    token: "your-client-token",
+  });
+
+  const room = await client.joinOrCreate("counter_plugin_room", { room: "default" });
+  room.send("player.move", { x: 10, y: 4, seq: 12 });
+  room.onMessage<{ startedAt: number }>("match.start", (payload) => {
+    console.log(payload.startedAt);
+  });
+}
+```
+
+## What happens during connect
+
+1. Socket opens.
+2. Client sends JSON handshake (`v`, supported codecs, project, token).
+3. Server validates auth and picks codec (MessagePack preferred).
+4. Server replies `handshake.ok`.
+5. SDK switches to negotiated codec for subsequent packets.
+
+## Connection options
+
+`connect(url, options)` supports:
+
+- `projectId`, `token`
+- codec preference order
+- reconnect policy (enabled by default)
+- optional auto-join matched room behavior
+
+See full signatures in [TypeScript SDK](/docs/sdks/typescript/).
+
+
+## Connection Lifecycle
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant C as Client SDK
+  participant D as Data Plane
+  C->>D: WS connect
+  C->>D: handshake
+  D-->>C: handshake.ok
+  C->>D: room.join_or_create
+  D-->>C: state.snapshot
+```
