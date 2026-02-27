@@ -123,7 +123,7 @@ Room-scoped API:
 - `room.sendBytes(type, bytes)`
 - `room.onMessage(type, cb)`
 
-`examples/web-demo` consumes `@nexis/sdk-ts` directly and demonstrates connect (token or anonymous, depending on `NEXIS_AUTH_MODE`), room join, RPC, and state patch handling.
+`examples/web-demo` consumes `@triformine/nexis-sdk` directly and demonstrates connect (token or anonymous, depending on `NEXIS_AUTH_MODE`), room join, RPC, and state patch handling.
 
 SDK tests (Bun):
 

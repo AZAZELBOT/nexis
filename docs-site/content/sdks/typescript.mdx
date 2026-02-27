@@ -5,12 +5,12 @@ description: Client API for connect, rooms, state, RPC, and matchmaking.
 
 # TypeScript SDK
 
-Package: `@nexis/sdk-ts`
+Package: `@triformine/nexis-sdk`
 
 ## Create and connect client
 
 ```ts
-import { NexisClient } from "@nexis/sdk-ts";
+import { NexisClient } from "@triformine/nexis-sdk";
 
 const client = new NexisClient();
 await client.connect(wsUrl, { projectId, token });
@@ -74,4 +74,3 @@ cd sdks/ts
 bun test
 bunx tsc -p tsconfig.json --noEmit
 ```
-

@@ -33,6 +33,36 @@ This document defines the release process for Nexis.
    - `git push origin v0.1.0`
 8. Create GitHub release from tag with changelog highlights.
 
+## Automated Release Workflow
+
+Workflow: `.github/workflows/release.yml`
+
+On tag push (`v*`) it:
+
+1. validates server + SDK + control API tests/typechecks
+2. builds and pushes Docker images to GHCR:
+   - `ghcr.io/<owner>/rust-server:<tag>`
+   - `ghcr.io/<owner>/control-api:<tag>`
+   - `ghcr.io/<owner>/dashboard-ui:<tag>`
+   - `ghcr.io/<owner>/web-demo:<tag>`
+3. publishes `@triformine/nexis-sdk` to npm
+
+## npm Trusted Publishing (OIDC)
+
+`release.yml` uses npm trusted publishing (OIDC), so no `NPM_TOKEN` is required.
+
+npm package trusted publisher configuration must match:
+
+- Provider: `GitHub Actions`
+- Organization/user: `TriForMine`
+- Repository: `nexis`
+- Workflow filename: `release.yml`
+
+Workflow requirements already set:
+
+- `permissions.id-token: write`
+- Node `24` for npm CLI compatibility
+
 ## Hotfix Process
 
 1. Branch from latest release tag.
@@ -40,4 +70,3 @@ This document defines the release process for Nexis.
 3. Bump patch version (`0.1.x`).
 4. Update changelog.
 5. Tag and release.
-

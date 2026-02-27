@@ -22,7 +22,7 @@ Return the token to your authenticated player session.
 ## 2. Client connects to data plane
 
 ```ts
-import { NexisClient } from "@nexis/sdk-ts";
+import { NexisClient } from "@triformine/nexis-sdk";
 
 const client = new NexisClient();
 await client.connect("ws://localhost:4000", {
@@ -81,4 +81,3 @@ On network interruption:
 - rate-limit gameplay message types
 - validate message payload schema per room type
 - monitor handshake/join/error rates
-

@@ -1,4 +1,8 @@
-import { connect, type NexisClient, type NexisRoom } from "@nexis/sdk-ts";
+import {
+  connect,
+  type NexisClient,
+  type NexisRoom,
+} from "@triformine/nexis-sdk";
 
 type TokenClaims = {
   project_id?: string;

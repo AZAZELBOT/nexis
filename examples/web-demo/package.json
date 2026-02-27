@@ -7,7 +7,7 @@
   "type": "module",
   "packageManager": "bun@1.3.9",
   "dependencies": {
-    "@nexis/sdk-ts": "file:../../sdks/ts"
+    "@triformine/nexis-sdk": "file:../../sdks/ts"
   },
   "scripts": {
     "dev": "bun --watch index.html --port 8080",

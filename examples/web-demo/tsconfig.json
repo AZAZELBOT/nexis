@@ -8,9 +8,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nexis/sdk-ts": ["../../sdks/ts/src/index.ts"],
-      "@nexis/sdk-ts/*": ["../../sdks/ts/src/*"]
-    }
+      "@triformine/nexis-sdk": ["../../sdks/ts/src/index.ts"],
+      "@triformine/nexis-sdk/*": ["../../sdks/ts/src/*"],
+    },
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts"],
 }
