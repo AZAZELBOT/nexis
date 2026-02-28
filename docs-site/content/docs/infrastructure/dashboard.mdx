@@ -1,0 +1,78 @@
+---
+title: Dashboard
+description: What the dashboard is for and how to use it.
+---
+
+# Dashboard
+
+The Nexis dashboard is the operator view for your project:
+
+- manage control-plane objects (`projects`, `keys`, `tokens`)
+- inspect live runtime activity (`rooms`, `connections`, `matchmaking`)
+- check overall platform health quickly before deeper debugging
+
+Use it during local development, staging verification, and production operations.
+
+## Access
+
+Default URL:
+
+- `http://localhost:5173`
+
+Sign in with your dashboard operator account (configured in control-api):
+
+- `NEXIS_DASHBOARD_ADMIN_EMAIL`
+- `NEXIS_DASHBOARD_ADMIN_PASSWORD`
+
+## Main Pages
+
+### Overview
+
+Use this page for a quick status read:
+
+- control-plane counters
+- room activity trend
+- current room list summary
+
+### Rooms
+
+Use this page to inspect room-level behavior:
+
+- active room list
+- room members
+- current room state snapshot
+
+This is usually the first page to open when gameplay state looks wrong.
+
+### Connections
+
+Use this page to inspect session lifecycle:
+
+- connected sessions
+- suspended sessions (resumable)
+- matchmaking queue
+
+This page helps answer reconnect and churn questions quickly.
+
+### Control Plane
+
+Use this page to manage control resources:
+
+- create/list projects
+- create/rotate/revoke keys
+- mint test tokens
+
+This page is the fastest way to run manual auth/token checks.
+
+## Typical Workflow
+
+1. Open **Overview** to confirm health.
+2. Open **Control Plane** to create project/key or mint a token if needed.
+3. Open **Rooms** and **Connections** while reproducing an issue.
+4. Cross-check runtime state with expected game behavior.
+
+## Notes
+
+- The dashboard is an operator/admin tool, not a player-facing surface.
+- Keep operator credentials and internal tokens private.
+- In production, place dashboard/control endpoints behind your normal access controls.

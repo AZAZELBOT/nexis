@@ -19,7 +19,7 @@ use hooks::NoopHooks;
 use protocol::{Handshake, Message, DEFAULT_MAX_PAYLOAD_BYTES, PROTOCOL_VERSION};
 use reqwest::Client as HttpClient;
 use rooms::{RoomManager, RoomTypeRegistry};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use state_sync::{diff, state_checksum, PatchOp};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -42,6 +42,7 @@ type SharedKeyStatusVerifier = Arc<Option<KeyStatusVerifier>>;
 type SharedAuthMode = Arc<AuthMode>;
 type SharedRuntimeMetrics = Arc<RuntimeMetrics>;
 type SharedWasmRoomPlugins = Arc<WasmRoomPlugins>;
+type SharedAdminToken = Arc<Option<String>>;
 
 const UNRELIABLE_QUEUE_CAPACITY: usize = 64;
 const RELIABLE_STREAM_ID: u16 = 0;
@@ -114,6 +115,70 @@ struct RuntimeMetrics {
     rpc_requests_total: AtomicU64,
     state_patches_total: AtomicU64,
     state_resync_total: AtomicU64,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminMetricsSnapshot {
+    active_connections: u64,
+    room_count: usize,
+    transport_messages_in_total: u64,
+    transport_messages_out_total: u64,
+    rpc_requests_total: u64,
+    state_patches_total: u64,
+    state_resync_total: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminTotals {
+    connected_sessions: usize,
+    suspended_sessions: usize,
+    matchmaking_waiting: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminRoomSnapshot {
+    id: String,
+    room_type: String,
+    member_count: usize,
+    members: Vec<String>,
+    created_at: String,
+    last_activity_at: String,
+    last_tick_at: String,
+    state: Option<Value>,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminSessionRoom {
+    room_id: String,
+    room_type: String,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminSessionSnapshot {
+    session_id: String,
+    project_id: String,
+    expires_at: String,
+    rooms: Vec<RuntimeAdminSessionRoom>,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminMatchmakingSnapshot {
+    session_id: String,
+    room_type: String,
+    size: usize,
+    enqueued_at: String,
+    age_seconds: i64,
+}
+
+#[derive(Debug, Serialize)]
+struct RuntimeAdminSnapshot {
+    generated_at: String,
+    metrics: RuntimeAdminMetricsSnapshot,
+    totals: RuntimeAdminTotals,
+    connected_sessions: Vec<String>,
+    rooms: Vec<RuntimeAdminRoomSnapshot>,
+    suspended_sessions: Vec<RuntimeAdminSessionSnapshot>,
+    matchmaking_queue: Vec<RuntimeAdminMatchmakingSnapshot>,
 }
 
 struct ActiveConnectionGuard {
@@ -202,6 +267,7 @@ pub async fn run_data_plane(acceptor: Arc<dyn TransportAcceptor>) -> Result<(), 
     let auth_mode = Arc::new(load_auth_mode());
     let metrics = Arc::new(RuntimeMetrics::default());
     let metrics_bind = load_metrics_bind();
+    let admin_token = Arc::new(load_admin_token());
     let tick_interval = load_room_tick_interval();
     let tick_interval_chrono = Duration::milliseconds(tick_interval.as_millis() as i64);
 
@@ -259,8 +325,21 @@ pub async fn run_data_plane(acceptor: Arc<dyn TransportAcceptor>) -> Result<(), 
     {
         let metrics = Arc::clone(&metrics);
         let rooms = Arc::clone(&rooms);
+        let peers = Arc::clone(&peers);
+        let sessions = Arc::clone(&sessions);
+        let matchmaking = Arc::clone(&matchmaking);
+        let admin_token = Arc::clone(&admin_token);
         tokio::spawn(async move {
-            run_metrics_server(metrics_bind, metrics, rooms).await;
+            run_metrics_server(
+                metrics_bind,
+                metrics,
+                rooms,
+                peers,
+                sessions,
+                matchmaking,
+                admin_token,
+            )
+            .await;
         });
     }
 
@@ -456,6 +535,13 @@ fn load_metrics_bind() -> String {
     env::var("NEXIS_METRICS_BIND").unwrap_or_else(|_| "0.0.0.0:9100".to_owned())
 }
 
+fn load_admin_token() -> Option<String> {
+    env::var("NEXIS_INTERNAL_TOKEN")
+        .ok()
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty())
+}
+
 fn render_metrics(metrics: &RuntimeMetrics, room_count: usize) -> String {
     format!(
         concat!(
@@ -491,12 +577,258 @@ fn render_metrics(metrics: &RuntimeMetrics, room_count: usize) -> String {
     )
 }
 
+fn parse_request_target(first_line: &str) -> Option<&str> {
+    let mut parts = first_line.split_whitespace();
+    let _method = parts.next()?;
+    parts.next()
+}
+
+fn parse_request_headers(request: &str) -> HashMap<String, String> {
+    let mut headers = HashMap::new();
+    for line in request.lines().skip(1) {
+        let line = line.trim();
+        if line.is_empty() {
+            break;
+        }
+        if let Some((name, value)) = line.split_once(':') {
+            headers.insert(name.trim().to_ascii_lowercase(), value.trim().to_owned());
+        }
+    }
+    headers
+}
+
+fn parse_query_params(target: &str) -> HashMap<String, String> {
+    let mut params = HashMap::new();
+    let Some((_, query)) = target.split_once('?') else {
+        return params;
+    };
+
+    for pair in query.split('&') {
+        if pair.trim().is_empty() {
+            continue;
+        }
+        let (key, value) = match pair.split_once('=') {
+            Some((key, value)) => (key.trim(), value.trim()),
+            None => (pair.trim(), ""),
+        };
+        if key.is_empty() {
+            continue;
+        }
+        params.insert(
+            decode_query_component(key),
+            decode_query_component(value),
+        );
+    }
+    params
+}
+
+fn decode_query_component(component: &str) -> String {
+    fn hex_nibble(byte: u8) -> Option<u8> {
+        match byte {
+            b'0'..=b'9' => Some(byte - b'0'),
+            b'a'..=b'f' => Some(10 + (byte - b'a')),
+            b'A'..=b'F' => Some(10 + (byte - b'A')),
+            _ => None,
+        }
+    }
+
+    let bytes = component.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        match bytes[index] {
+            b'+' => {
+                out.push(b' ');
+                index += 1;
+            }
+            b'%' if index + 2 < bytes.len() => {
+                let hi = bytes[index + 1];
+                let lo = bytes[index + 2];
+                if let (Some(hi), Some(lo)) = (hex_nibble(hi), hex_nibble(lo)) {
+                    out.push((hi << 4) | lo);
+                    index += 3;
+                } else {
+                    out.push(bytes[index]);
+                    index += 1;
+                }
+            }
+            value => {
+                out.push(value);
+                index += 1;
+            }
+        }
+    }
+
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+fn query_bool(params: &HashMap<String, String>, key: &str) -> Option<bool> {
+    params.get(key).map(|value| {
+        matches!(
+            value.to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
+}
+
+fn is_admin_authorized(headers: &HashMap<String, String>, expected_token: Option<&str>) -> bool {
+    let Some(expected_token) = expected_token else {
+        return false;
+    };
+    headers
+        .get("x-nexis-internal-token")
+        .map(|provided| provided == expected_token)
+        .unwrap_or(false)
+}
+
+fn runtime_metrics_snapshot(
+    metrics: &RuntimeMetrics,
+    room_count: usize,
+) -> RuntimeAdminMetricsSnapshot {
+    RuntimeAdminMetricsSnapshot {
+        active_connections: metrics.active_connections.load(Ordering::Relaxed),
+        room_count,
+        transport_messages_in_total: metrics.transport_messages_in_total.load(Ordering::Relaxed),
+        transport_messages_out_total: metrics.transport_messages_out_total.load(Ordering::Relaxed),
+        rpc_requests_total: metrics.rpc_requests_total.load(Ordering::Relaxed),
+        state_patches_total: metrics.state_patches_total.load(Ordering::Relaxed),
+        state_resync_total: metrics.state_resync_total.load(Ordering::Relaxed),
+    }
+}
+
+async fn render_runtime_snapshot_json(
+    metrics: &RuntimeMetrics,
+    rooms: &SharedRooms,
+    peers: &SharedPeers,
+    sessions: &SharedSessions,
+    matchmaking: &SharedMatchmaking,
+    include_state: bool,
+    room_filter: Option<&str>,
+) -> String {
+    let now = Utc::now();
+
+    let connected_sessions = {
+        let peers = peers.lock().await;
+        let mut sessions = peers.keys().cloned().collect::<Vec<_>>();
+        sessions.sort();
+        sessions
+    };
+
+    let (room_snapshots, total_room_count) = {
+        let manager = rooms.lock().await;
+        let snapshots = manager
+            .list_rooms(None)
+            .into_iter()
+            .filter(|summary| {
+                room_filter
+                    .map(|selected_room| selected_room == summary.id)
+                    .unwrap_or(true)
+            })
+            .map(|summary| {
+                let members = manager.room_members(&summary.id).unwrap_or_default();
+                if let Some(room) = manager.room(&summary.id) {
+                    RuntimeAdminRoomSnapshot {
+                        id: summary.id.clone(),
+                        room_type: summary.room_type.clone(),
+                        member_count: summary.members,
+                        members,
+                        created_at: room.created_at.to_rfc3339(),
+                        last_activity_at: room.last_activity_at.to_rfc3339(),
+                        last_tick_at: room.last_tick_at.to_rfc3339(),
+                        state: if include_state {
+                            Some(room.state.clone())
+                        } else {
+                            None
+                        },
+                    }
+                } else {
+                    RuntimeAdminRoomSnapshot {
+                        id: summary.id.clone(),
+                        room_type: summary.room_type.clone(),
+                        member_count: summary.members,
+                        members,
+                        created_at: now.to_rfc3339(),
+                        last_activity_at: now.to_rfc3339(),
+                        last_tick_at: now.to_rfc3339(),
+                        state: None,
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
+        (snapshots, manager.room_count())
+    };
+
+    let suspended_sessions = {
+        let store = sessions.lock().await;
+        store
+            .snapshots()
+            .into_iter()
+            .map(|entry| RuntimeAdminSessionSnapshot {
+                session_id: entry.session_id,
+                project_id: entry.snapshot.project_id,
+                expires_at: entry.snapshot.expires_at.to_rfc3339(),
+                rooms: entry
+                    .snapshot
+                    .rooms
+                    .into_iter()
+                    .map(|room| RuntimeAdminSessionRoom {
+                        room_id: room.room_id,
+                        room_type: room.room_type,
+                    })
+                    .collect(),
+            })
+            .collect::<Vec<_>>()
+    };
+
+    let matchmaking_queue = {
+        let queue = matchmaking.lock().await;
+        queue
+            .snapshot()
+            .into_iter()
+            .map(|ticket| RuntimeAdminMatchmakingSnapshot {
+                session_id: ticket.session_id,
+                room_type: ticket.room_type,
+                size: ticket.size,
+                enqueued_at: ticket.enqueued_at.to_rfc3339(),
+                age_seconds: now
+                    .signed_duration_since(ticket.enqueued_at)
+                    .num_seconds()
+                    .max(0),
+            })
+            .collect::<Vec<_>>()
+    };
+
+    let metrics_snapshot = runtime_metrics_snapshot(metrics, total_room_count);
+
+    let payload = RuntimeAdminSnapshot {
+        generated_at: now.to_rfc3339(),
+        totals: RuntimeAdminTotals {
+            connected_sessions: connected_sessions.len(),
+            suspended_sessions: suspended_sessions.len(),
+            matchmaking_waiting: matchmaking_queue.len(),
+        },
+        metrics: metrics_snapshot,
+        connected_sessions,
+        rooms: room_snapshots,
+        suspended_sessions,
+        matchmaking_queue,
+    };
+
+    serde_json::to_string(&payload)
+        .unwrap_or_else(|_| "{\"error\":\"snapshot serialization failed\"}".to_owned())
+}
+
 async fn handle_metrics_connection(
     mut stream: TcpStream,
     metrics: SharedRuntimeMetrics,
     rooms: SharedRooms,
+    peers: SharedPeers,
+    sessions: SharedSessions,
+    matchmaking: SharedMatchmaking,
+    admin_token: SharedAdminToken,
 ) {
-    let mut buffer = [0_u8; 2048];
+    let mut buffer = [0_u8; 8192];
     let read = match stream.read(&mut buffer).await {
         Ok(n) => n,
         Err(_) => return,
@@ -507,19 +839,59 @@ async fn handle_metrics_connection(
 
     let request = String::from_utf8_lossy(&buffer[..read]);
     let first_line = request.lines().next().unwrap_or_default();
-    let (status_line, body, content_type) = if first_line.starts_with("GET /metrics") {
+    let method = first_line.split_whitespace().next().unwrap_or_default();
+    let target = parse_request_target(first_line).unwrap_or("/");
+    let headers = parse_request_headers(request.as_ref());
+    let query_params = parse_query_params(target);
+    let path = target.split('?').next().unwrap_or(target);
+
+    let (status_line, body, content_type) = if method != "GET" {
+        (
+            "HTTP/1.1 405 Method Not Allowed\r\n",
+            "method not allowed\n".to_owned(),
+            "text/plain; charset=utf-8",
+        )
+    } else if path == "/metrics" {
         let room_count = rooms.lock().await.room_count();
         (
             "HTTP/1.1 200 OK\r\n",
             render_metrics(metrics.as_ref(), room_count),
             "text/plain; version=0.0.4; charset=utf-8",
         )
-    } else if first_line.starts_with("GET /health") {
+    } else if path == "/health" {
         (
             "HTTP/1.1 200 OK\r\n",
             "ok\n".to_owned(),
             "text/plain; charset=utf-8",
         )
+    } else if path == "/admin/runtime" {
+        if !is_admin_authorized(&headers, admin_token.as_ref().as_deref()) {
+            (
+                "HTTP/1.1 401 Unauthorized\r\n",
+                "{\"error\":\"unauthorized\"}\n".to_owned(),
+                "application/json; charset=utf-8",
+            )
+        } else {
+            let include_state = query_bool(&query_params, "include_state").unwrap_or(false);
+            let room_filter = query_params
+                .get("room_id")
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty());
+            (
+                "HTTP/1.1 200 OK\r\n",
+                render_runtime_snapshot_json(
+                    metrics.as_ref(),
+                    &rooms,
+                    &peers,
+                    &sessions,
+                    &matchmaking,
+                    include_state,
+                    room_filter,
+                )
+                .await,
+                "application/json; charset=utf-8",
+            )
+        }
     } else {
         (
             "HTTP/1.1 404 Not Found\r\n",
@@ -536,7 +908,15 @@ async fn handle_metrics_connection(
     let _ = stream.write_all(response.as_bytes()).await;
 }
 
-async fn run_metrics_server(bind: String, metrics: SharedRuntimeMetrics, rooms: SharedRooms) {
+async fn run_metrics_server(
+    bind: String,
+    metrics: SharedRuntimeMetrics,
+    rooms: SharedRooms,
+    peers: SharedPeers,
+    sessions: SharedSessions,
+    matchmaking: SharedMatchmaking,
+    admin_token: SharedAdminToken,
+) {
     let listener = match tokio::net::TcpListener::bind(&bind).await {
         Ok(listener) => listener,
         Err(error) => {
@@ -556,8 +936,21 @@ async fn run_metrics_server(bind: String, metrics: SharedRuntimeMetrics, rooms: 
         };
         let metrics = Arc::clone(&metrics);
         let rooms = Arc::clone(&rooms);
+        let peers = Arc::clone(&peers);
+        let sessions = Arc::clone(&sessions);
+        let matchmaking = Arc::clone(&matchmaking);
+        let admin_token = Arc::clone(&admin_token);
         tokio::spawn(async move {
-            handle_metrics_connection(stream, metrics, rooms).await;
+            handle_metrics_connection(
+                stream,
+                metrics,
+                rooms,
+                peers,
+                sessions,
+                matchmaking,
+                admin_token,
+            )
+            .await;
         });
     }
 }
@@ -1978,6 +2371,7 @@ mod tests {
     use super::*;
     use codec_json::JsonCodec;
     use serde_json::json;
+    use std::collections::HashMap;
     use std::sync::Mutex as StdMutex;
 
     #[derive(Clone)]
@@ -2160,5 +2554,39 @@ mod tests {
             result.is_ok(),
             "benign close-path send errors should be ignored"
         );
+    }
+
+    #[test]
+    fn query_bool_parses_expected_values() {
+        let mut params = HashMap::new();
+        params.insert("include_state".to_owned(), "true".to_owned());
+        assert_eq!(query_bool(&params, "include_state"), Some(true));
+
+        params.insert("include_state".to_owned(), "0".to_owned());
+        assert_eq!(query_bool(&params, "include_state"), Some(false));
+    }
+
+    #[test]
+    fn parse_query_params_decodes_percent_encoded_values() {
+        let params = parse_query_params(
+            "/admin/runtime?include_state=1&room_id=counter_plugin_room%3Adefault",
+        );
+        assert_eq!(
+            params.get("room_id").map(String::as_str),
+            Some("counter_plugin_room:default")
+        );
+    }
+
+    #[test]
+    fn admin_authorization_requires_matching_internal_token() {
+        let mut headers = HashMap::new();
+        headers.insert(
+            "x-nexis-internal-token".to_owned(),
+            "expected-token".to_owned(),
+        );
+
+        assert!(is_admin_authorized(&headers, Some("expected-token")));
+        assert!(!is_admin_authorized(&headers, Some("other-token")));
+        assert!(!is_admin_authorized(&headers, None));
     }
 }

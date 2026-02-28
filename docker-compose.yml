@@ -22,6 +22,12 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/nexis
       NEXIS_MASTER_SECRET: ${NEXIS_MASTER_SECRET:-change-me}
       NEXIS_INTERNAL_TOKEN: ${NEXIS_INTERNAL_TOKEN:-change-me}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-me}
+      NEXIS_AUTH_BASE_URL: http://control-api:3000
+      NEXIS_DASHBOARD_ADMIN_EMAIL: ${NEXIS_DASHBOARD_ADMIN_EMAIL:-admin@nexis.local}
+      NEXIS_DASHBOARD_ADMIN_PASSWORD: ${NEXIS_DASHBOARD_ADMIN_PASSWORD:-ChangeMe!123456}
+      NEXIS_DASHBOARD_ADMIN_NAME: ${NEXIS_DASHBOARD_ADMIN_NAME:-Nexis Admin}
+      NEXIS_AUTH_ALLOW_SIGNUP: ${NEXIS_AUTH_ALLOW_SIGNUP:-0}
       NEXIS_DEMO_PROJECT_ID: demo-project
       NEXIS_DEMO_KEY_ID: demo-key
       NEXIS_DEMO_PROJECT_SECRET: demo-secret
@@ -76,6 +82,8 @@ services:
     environment:
       PORT: 5173
       CONTROL_API_URL: http://control-api:3000
+      RUNTIME_ADMIN_URL: http://rust-server:9100
+      NEXIS_INTERNAL_TOKEN: ${NEXIS_INTERNAL_TOKEN:-change-me}
     depends_on:
       control-api:
         condition: service_healthy

@@ -1,3 +1,10 @@
 {
-  "pages": ["index", "self-hosting", "runtime-config", "observability", "operations-runbook"]
+  "pages": [
+    "index",
+    "self-hosting",
+    "runtime-config",
+    "dashboard",
+    "observability",
+    "operations-runbook"
+  ]
 }

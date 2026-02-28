@@ -1,6 +1,7 @@
 import { cors } from "@elysiajs/cors";
 import { Elysia } from "elysia";
 
+import type { BetterAuthRuntime } from "./better_auth";
 import {
   createProjectSecret as defaultCreateProjectSecret,
   deriveProjectSecret,
@@ -15,6 +16,11 @@ const defaultAllowedOrigins = [
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "http://localhost:8080",
+];
+const defaultAllowedHeaders = [
+  "Content-Type",
+  "Authorization",
+  "x-nexis-internal-token",
 ];
 const TOKEN_MINT_SCOPE = "token:mint";
 
@@ -35,10 +41,12 @@ type MetricsState = {
 
 export type ControlApiConfig = {
   allowedOrigins?: string[];
+  allowedHeaders?: string[];
   demoProjectId: string;
   demoSecret: string;
   masterSecret: string;
   internalToken?: string;
+  auth?: BetterAuthRuntime;
   now?: () => Date;
   randomUUID?: () => string;
   createProjectSecret?: () => string;
@@ -95,9 +103,19 @@ export function createControlApiApp(
   const createProjectSecret =
     config.createProjectSecret ?? defaultCreateProjectSecret;
   const internalToken = config.internalToken?.trim() || null;
+  const authEnabled = Boolean(config.auth);
+  const auth =
+    config.auth ??
+    ({
+      basePath: "/__disabled-auth__",
+      handleRequest: async () =>
+        Response.json({ error: "not found" }, { status: 404 }),
+      isAuthenticated: async () => true,
+    } satisfies BetterAuthRuntime);
   const allowedOrigins = new Set(
     config.allowedOrigins ?? defaultAllowedOrigins,
   );
+  const allowedHeaders = config.allowedHeaders ?? defaultAllowedHeaders;
   const startup = now();
   const metrics: MetricsState = {
     started_at: startup.toISOString(),
@@ -121,13 +139,45 @@ export function createControlApiApp(
         aot: false,
         origin: [...allowedOrigins],
         methods: ["GET", "POST", "OPTIONS"],
-        allowedHeaders: ["Content-Type", "Authorization"],
+        allowedHeaders,
         credentials: true,
         preflight: true,
       }),
     )
     .onAfterHandle(({ request, set }) => {
       applyCorsHeaders(request, set as HeadersCarrier, allowedOrigins);
+    })
+    .all(`${auth.basePath}`, async ({ request }) => auth.handleRequest(request))
+    .all(`${auth.basePath}/*`, async ({ request }) =>
+      auth.handleRequest(request),
+    )
+    .onBeforeHandle(async ({ request, set }) => {
+      if (!authEnabled) {
+        return;
+      }
+      if (request.method === "OPTIONS") {
+        return;
+      }
+
+      const pathname = new URL(request.url).pathname;
+      if (pathname === "/health") {
+        return;
+      }
+      if (pathname.startsWith(auth.basePath)) {
+        return;
+      }
+      if (pathname.startsWith("/internal/")) {
+        return;
+      }
+      if (isInternalAuthorized(request, internalToken)) {
+        return;
+      }
+
+      const authenticated = await auth.isAuthenticated(request);
+      if (!authenticated) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
     })
     .get("/health", () => ({ ok: true }))
     .get("/metrics", () => {

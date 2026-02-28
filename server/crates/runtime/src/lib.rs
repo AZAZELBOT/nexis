@@ -364,6 +364,12 @@ pub struct SessionSnapshot {
     pub expires_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionSnapshotEntry {
+    pub session_id: String,
+    pub snapshot: SessionSnapshot,
+}
+
 #[derive(Debug, Clone)]
 pub struct SessionStore {
     ttl: Duration,
@@ -427,6 +433,23 @@ impl SessionStore {
 
     pub fn remove(&mut self, session_id: &str) -> Option<SessionSnapshot> {
         self.suspended.remove(session_id)
+    }
+
+    pub fn snapshots(&self) -> Vec<SessionSnapshotEntry> {
+        let mut snapshots = self
+            .suspended
+            .iter()
+            .map(|(session_id, snapshot)| SessionSnapshotEntry {
+                session_id: session_id.clone(),
+                snapshot: snapshot.clone(),
+            })
+            .collect::<Vec<_>>();
+        snapshots.sort_by(|left, right| left.session_id.cmp(&right.session_id));
+        snapshots
+    }
+
+    pub fn len(&self) -> usize {
+        self.suspended.len()
     }
 }
 
@@ -592,6 +615,14 @@ struct MatchmakingEntry {
     enqueued_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatchmakingEntrySnapshot {
+    pub session_id: String,
+    pub room_type: String,
+    pub size: usize,
+    pub enqueued_at: DateTime<Utc>,
+}
+
 #[derive(Debug, Clone)]
 pub struct MatchmakingQueue {
     waiting: Vec<MatchmakingEntry>,
@@ -698,6 +729,29 @@ impl MatchmakingQueue {
             .iter()
             .filter(|entry| entry.room_type == room_type && entry.size == size)
             .count()
+    }
+
+    pub fn snapshot(&self) -> Vec<MatchmakingEntrySnapshot> {
+        let mut snapshot = self
+            .waiting
+            .iter()
+            .map(|entry| MatchmakingEntrySnapshot {
+                session_id: entry.session_id.clone(),
+                room_type: entry.room_type.clone(),
+                size: entry.size,
+                enqueued_at: entry.enqueued_at,
+            })
+            .collect::<Vec<_>>();
+        snapshot.sort_by(|left, right| {
+            left.enqueued_at
+                .cmp(&right.enqueued_at)
+                .then_with(|| left.session_id.cmp(&right.session_id))
+        });
+        snapshot
+    }
+
+    pub fn len(&self) -> usize {
+        self.waiting.len()
     }
 }
 
@@ -1248,6 +1302,36 @@ mod tests {
     }
 
     #[test]
+    fn session_store_snapshots_are_sorted_and_counted() {
+        let mut store = SessionStore::new(Duration::seconds(30));
+        let t0 = Utc.with_ymd_and_hms(2026, 2, 25, 18, 0, 0).unwrap();
+        store.park(
+            "s-2".to_owned(),
+            "p-2".to_owned(),
+            vec![RoomMembership {
+                room_id: "room-b".to_owned(),
+                room_type: "echo_room".to_owned(),
+            }],
+            t0,
+        );
+        store.park(
+            "s-1".to_owned(),
+            "p-1".to_owned(),
+            vec![RoomMembership {
+                room_id: "room-a".to_owned(),
+                room_type: "counter_room".to_owned(),
+            }],
+            t0,
+        );
+
+        let snapshots = store.snapshots();
+        assert_eq!(store.len(), 2);
+        assert_eq!(snapshots.len(), 2);
+        assert_eq!(snapshots[0].session_id, "s-1");
+        assert_eq!(snapshots[1].session_id, "s-2");
+    }
+
+    #[test]
     fn room_sequencer_advances_monotonically() {
         let mut seq = RoomSequencer::default();
         assert_eq!(seq.current("room-a"), 0);
@@ -1328,6 +1412,20 @@ mod tests {
                 position: 1,
             }
         );
+    }
+
+    #[test]
+    fn matchmaking_snapshot_is_sorted_and_counted() {
+        let mut queue = MatchmakingQueue::with_timeout(Duration::seconds(30));
+        let t0 = Utc.with_ymd_and_hms(2026, 2, 25, 18, 0, 0).unwrap();
+        let _ = queue.enqueue_at("s-2", "echo_room", 3, t0 + Duration::seconds(2));
+        let _ = queue.enqueue_at("s-1", "echo_room", 3, t0 + Duration::seconds(1));
+
+        let snapshot = queue.snapshot();
+        assert_eq!(queue.len(), 2);
+        assert_eq!(snapshot.len(), 2);
+        assert_eq!(snapshot[0].session_id, "s-1");
+        assert_eq!(snapshot[1].session_id, "s-2");
     }
 
     #[test]

@@ -1,6 +1,11 @@
 import { createControlApiApp } from "./app";
 import { initializeBetterAuth } from "./better_auth";
-import { createPostgresStore, migrate, seedDemoData } from "./db";
+import {
+  createPostgresStore,
+  ensureBetterAuthTables,
+  migrate,
+  seedDemoData,
+} from "./db";
 
 const port = Number(process.env.PORT ?? 3000);
 const demoProjectId = process.env.NEXIS_DEMO_PROJECT_ID ?? "demo-project";
@@ -12,6 +17,10 @@ const masterSecret =
   process.env.NEXIS_MASTER_SECRET ?? "nexis-dev-master-secret";
 const internalToken =
   process.env.NEXIS_INTERNAL_TOKEN ?? "nexis-dev-internal-token";
+const allowedOrigins = (process.env.NEXIS_ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter((value) => value.length > 0);
 
 if (!process.env.NEXIS_MASTER_SECRET) {
   console.warn(
@@ -29,8 +38,21 @@ if (!process.env.NEXIS_DEMO_PROJECT_SECRET) {
   );
 }
 
-await initializeBetterAuth();
 await migrate();
+await ensureBetterAuthTables();
+
+const auth = await initializeBetterAuth({
+  trustedOrigins:
+    allowedOrigins.length > 0
+      ? allowedOrigins
+      : [
+          "http://localhost:5173",
+          "http://127.0.0.1:5173",
+          "http://localhost:8080",
+        ],
+  internalToken: internalToken.trim() || null,
+});
+
 await seedDemoData(
   demoProjectId,
   demoProjectName,
@@ -40,10 +62,12 @@ await seedDemoData(
 );
 
 const app = createControlApiApp(createPostgresStore(), {
+  allowedOrigins: allowedOrigins.length > 0 ? allowedOrigins : undefined,
   demoProjectId,
   demoSecret,
   masterSecret,
   internalToken,
+  auth,
 });
 
 app.listen(port);

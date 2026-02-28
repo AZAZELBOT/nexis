@@ -9,6 +9,7 @@ description: Metrics endpoints and baseline checks.
 
 - Data plane: `GET /metrics` on `:9100` (default)
 - Control API: `GET /metrics` on `:3000`
+- Data plane admin snapshot: `GET /admin/runtime` on `:9100` (requires `x-nexis-internal-token`)
 
 ## What to Track
 
@@ -17,6 +18,21 @@ description: Metrics endpoints and baseline checks.
 - room message RTT
 - websocket errors
 - reconnect/resume success rate
+- active rooms, members, and room state drift from expected plugin state
+
+## Runtime Admin Snapshot
+
+Use the data-plane admin endpoint for live room/session introspection:
+
+```bash
+curl "http://localhost:9100/admin/runtime?include_state=1" \
+  -H "x-nexis-internal-token: <internal-token>"
+```
+
+Query options:
+
+- `include_state=1` includes full room state payloads
+- `room_id=<room-id>` filters snapshot to a specific room
 
 ## Baseline Testing
 

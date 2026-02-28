@@ -24,6 +24,8 @@ services:
     build:
       context: .
       dockerfile: dashboard/ui/Dockerfile
+    environment:
+      NEXIS_INTERNAL_TOKEN: nexis-dev-internal-token
     ports:
       - "5173:5173"
 

@@ -472,6 +472,7 @@ jobs:
         run: |
           mkdir -p dist
           cp "dashboard/control-api/control-api${{ matrix.ext }}" dist/nexis-control-api${{ matrix.ext }}
+          cp -R "dashboard/control-api/drizzle" dist/drizzle
           tar -czf "nexis-control-api-${{ matrix.label }}.${{ matrix.archive_ext }}" -C dist .
       - name: Package control-api (windows)
         if: runner.os == 'Windows'
@@ -479,6 +480,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist -Force | Out-Null
           Copy-Item "dashboard/control-api/control-api${{ matrix.ext }}" "dist/nexis-control-api${{ matrix.ext }}"
+          Copy-Item -Recurse "dashboard/control-api/drizzle" "dist/drizzle"
           Compress-Archive -Path "dist/*" -DestinationPath "nexis-control-api-${{ matrix.label }}.${{ matrix.archive_ext }}" -Force
       - name: Upload control-api artifact
         uses: actions/upload-artifact@v4

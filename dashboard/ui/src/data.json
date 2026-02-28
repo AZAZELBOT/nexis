@@ -1,0 +1,14 @@
+[
+  {
+    "id": "counter_room:alpha",
+    "roomType": "counter_room",
+    "members": 0,
+    "lastActivity": "No activity yet"
+  },
+  {
+    "id": "echo_room:beta",
+    "roomType": "echo_room",
+    "members": 0,
+    "lastActivity": "No activity yet"
+  }
+]

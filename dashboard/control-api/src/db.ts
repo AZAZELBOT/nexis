@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { and, desc, eq, sql as dsql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate as drizzleMigrate } from "drizzle-orm/postgres-js/migrator";
@@ -15,7 +17,7 @@ export const sql = postgres(databaseUrl, {
   idle_timeout: 20,
 });
 
-const db = drizzle(sql, {
+export const db = drizzle(sql, {
   schema: {
     projects,
     projectKeys,
@@ -32,8 +34,96 @@ function normalizeScopes(value: unknown): string[] {
   return ["token:mint"];
 }
 
+function resolveMigrationsFolder(): string {
+  const fromEnv = process.env.NEXIS_MIGRATIONS_DIR;
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const candidates = [
+    resolve(process.cwd(), "drizzle"),
+    resolve(dirname(process.execPath), "drizzle"),
+  ];
+
+  for (const folder of candidates) {
+    if (existsSync(resolve(folder, "meta", "_journal.json"))) {
+      return folder;
+    }
+  }
+
+  throw new Error(
+    `Can't find migrations folder. Looked for meta/_journal.json in: ${candidates.join(", ")}. Set NEXIS_MIGRATIONS_DIR to override.`,
+  );
+}
+
 export async function migrate(): Promise<void> {
-  await drizzleMigrate(db, { migrationsFolder: "./drizzle" });
+  await drizzleMigrate(db, { migrationsFolder: resolveMigrationsFolder() });
+}
+
+export async function ensureBetterAuthTables(): Promise<void> {
+  await sql`
+    CREATE TABLE IF NOT EXISTS auth_user (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+      image TEXT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS auth_session (
+      id TEXT PRIMARY KEY,
+      expires_at TIMESTAMPTZ NOT NULL,
+      token TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      ip_address TEXT NULL,
+      user_agent TEXT NULL,
+      user_id TEXT NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE
+    );
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS auth_session_user_id_idx ON auth_session(user_id);
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS auth_account (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      provider_id TEXT NOT NULL,
+      user_id TEXT NOT NULL REFERENCES auth_user(id) ON DELETE CASCADE,
+      access_token TEXT NULL,
+      refresh_token TEXT NULL,
+      id_token TEXT NULL,
+      access_token_expires_at TIMESTAMPTZ NULL,
+      refresh_token_expires_at TIMESTAMPTZ NULL,
+      scope TEXT NULL,
+      password TEXT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT auth_account_provider_account_unique UNIQUE (provider_id, account_id)
+    );
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS auth_account_user_id_idx ON auth_account(user_id);
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS auth_verification (
+      id TEXT PRIMARY KEY,
+      identifier TEXT NOT NULL,
+      value TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS auth_verification_identifier_idx ON auth_verification(identifier);
+  `;
 }
 
 export async function seedDemoData(
@@ -146,7 +236,9 @@ export function createPostgresStore(): ControlStore {
       const [projectKey] = await db
         .select({ id: projectKeys.id })
         .from(projectKeys)
-        .where(and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)))
+        .where(
+          and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)),
+        )
         .limit(1);
       return Boolean(projectKey);
     },
@@ -155,7 +247,9 @@ export function createPostgresStore(): ControlStore {
       const [projectKey] = await db
         .select()
         .from(projectKeys)
-        .where(and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)))
+        .where(
+          and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)),
+        )
         .limit(1);
       if (!projectKey) {
         return null;
@@ -179,7 +273,9 @@ export function createPostgresStore(): ControlStore {
         .set({
           revokedAt: dsql`COALESCE(${projectKeys.revokedAt}, ${revokedAt}::timestamptz)`,
         })
-        .where(and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)))
+        .where(
+          and(eq(projectKeys.id, keyId), eq(projectKeys.projectId, projectId)),
+        )
         .returning();
 
       if (!projectKey) {
