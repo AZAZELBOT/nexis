@@ -180,37 +180,58 @@ const wsUrl = process.env.NEXIS_WS_URL ?? "ws://127.0.0.1:4000";
 const timeoutMs = Number(process.env.NEXIS_SMOKE_TIMEOUT_MS ?? 10_000);
 const sessionTtlSeconds = Number(process.env.NEXIS_SESSION_TTL_SECONDS ?? 30);
 const resumeExpiryWaitMs = Math.max(1, sessionTtlSeconds + 1) * 1_000;
+const controlApiInternalToken = (
+  process.env.NEXIS_INTERNAL_TOKEN ?? "nexis-dev-internal-token"
+).trim();
+
+function controlApiInit(init: RequestInit = {}): RequestInit {
+  const headers = new Headers(init.headers);
+  if (controlApiInternalToken.length > 0) {
+    headers.set("x-nexis-internal-token", controlApiInternalToken);
+  }
+  return {
+    ...init,
+    headers,
+  };
+}
+
+async function controlApiRequestJson<T>(
+  path: string,
+  init?: RequestInit,
+): Promise<T> {
+  return requestJson<T>(`${controlApiUrl}${path}`, controlApiInit(init));
+}
 
 const projectName = `smoke-${Date.now()}`;
 
 console.log(`[smoke] creating project "${projectName}"`);
-const project = await requestJson<{
+const project = await controlApiRequestJson<{
   id: string;
   name: string;
-}>(`${controlApiUrl}/projects`, {
+}>("/projects", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ name: projectName }),
 });
 
 console.log(`[smoke] creating key for project ${project.id}`);
-const key = await requestJson<{
+const key = await controlApiRequestJson<{
   id: string;
-}>(`${controlApiUrl}/projects/${project.id}/keys`, {
+}>(`/projects/${project.id}/keys`, {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({ name: "smoke" }),
 });
 
 console.log(`[smoke] minting token`);
-const minted = await requestJson<{
+const minted = await controlApiRequestJson<{
   token: string;
   claims: {
     project_id: string;
     issued_at: string;
     expires_at: string;
   };
-}>(`${controlApiUrl}/tokens`, {
+}>("/tokens", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({
@@ -226,28 +247,31 @@ assert(
 );
 
 console.log("[smoke] rotating key and checking hardening");
-const rotatedKey = await requestJson<{ id: string }>(
-  `${controlApiUrl}/projects/${project.id}/keys/${key.id}/rotate`,
+const rotatedKey = await controlApiRequestJson<{ id: string }>(
+  `/projects/${project.id}/keys/${key.id}/rotate`,
   {
     method: "POST",
   },
 );
 
-const oldMintAttempt = await fetch(`${controlApiUrl}/tokens`, {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({
-    project_id: project.id,
-    key_id: key.id,
-    ttl_seconds: 300,
+const oldMintAttempt = await fetch(
+  `${controlApiUrl}/tokens`,
+  controlApiInit({
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      project_id: project.id,
+      key_id: key.id,
+      ttl_seconds: 300,
+    }),
   }),
-});
+);
 assert(
   oldMintAttempt.status === 403,
   "old key should be revoked after rotation",
 );
 
-const rotatedMinted = await requestJson<{
+const rotatedMinted = await controlApiRequestJson<{
   token: string;
   claims: {
     project_id: string;
@@ -255,7 +279,7 @@ const rotatedMinted = await requestJson<{
     expires_at: string;
     key_id?: string;
   };
-}>(`${controlApiUrl}/tokens`, {
+}>("/tokens", {
   method: "POST",
   headers: { "content-type": "application/json" },
   body: JSON.stringify({
@@ -570,9 +594,9 @@ assert(
   "match participants should include both session ids",
 );
 
-const metrics = await requestJson<{
+const metrics = await controlApiRequestJson<{
   counters: Record<string, number>;
-}>(`${controlApiUrl}/metrics`);
+}>("/metrics");
 assert(
   metrics.counters.keys_rotated >= 1,
   "metrics should count key rotations",
