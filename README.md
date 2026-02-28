@@ -1,5 +1,7 @@
 # NEXIS
 
+[![npm version](https://img.shields.io/npm/v/%40triformine%2Fnexis-sdk?logo=npm&label=npm)](https://www.npmjs.com/package/@triformine/nexis-sdk)
+
 Nexis is an open-source, engine-agnostic multiplayer backend platform with:
 
 - a Rust data plane for realtime gameplay traffic

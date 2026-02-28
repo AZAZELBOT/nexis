@@ -10,6 +10,16 @@ This example uses Nexis' Rust helper crate:
 
 so plugin authors write normal Rust handlers instead of raw ABI exports.
 
+For external projects, depend on crates.io:
+
+```toml
+[dependencies]
+nexis_wasm_plugin = "0.1.5"
+serde_json = "1"
+```
+
+Inside this monorepo example, we keep a local path dependency for development.
+
 Build:
 
 ```bash

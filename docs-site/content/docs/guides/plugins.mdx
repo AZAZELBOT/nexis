@@ -32,6 +32,14 @@ Best when:
 
 Configured through `NEXIS_WASM_ROOM_PLUGINS`.
 
+Rust plugin authors can use the helper crate published on crates.io:
+
+```toml
+[dependencies]
+nexis_wasm_plugin = "0.1.5"
+serde_json = "1"
+```
+
 ## Message contract inside plugins
 
 Room message payload in plugin `on_message`:

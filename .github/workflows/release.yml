@@ -13,6 +13,11 @@ on:
         required: false
         default: true
         type: boolean
+      publish_crate_nexis_wasm_plugin:
+        description: "Publish nexis_wasm_plugin crate to crates.io"
+        required: false
+        default: true
+        type: boolean
       publish_images:
         description: "Build and publish Docker images to GHCR"
         required: false
@@ -31,6 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       sdk_ts: ${{ steps.set.outputs.sdk_ts }}
+      crate_nexis_wasm_plugin: ${{ steps.set.outputs.crate_nexis_wasm_plugin }}
       image_rust_server: ${{ steps.set.outputs.image_rust_server }}
       image_control_api: ${{ steps.set.outputs.image_control_api }}
       image_dashboard_ui: ${{ steps.set.outputs.image_dashboard_ui }}
@@ -45,6 +51,8 @@ jobs:
           filters: |
             sdk_ts:
               - 'sdks/ts/**'
+            crate_nexis_wasm_plugin:
+              - 'plugins/rust/nexis_wasm_plugin/**'
             image_rust_server:
               - 'server/**'
               - 'plugins/**'
@@ -60,12 +68,14 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" == refs/tags/v* ]] || [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
             sdk_ts=true
+            crate_nexis_wasm_plugin=true
             image_rust_server=true
             image_control_api=true
             image_dashboard_ui=true
             image_web_demo=true
           else
             sdk_ts="${{ steps.filter.outputs.sdk_ts }}"
+            crate_nexis_wasm_plugin="${{ steps.filter.outputs.crate_nexis_wasm_plugin }}"
             image_rust_server="${{ steps.filter.outputs.image_rust_server }}"
             image_control_api="${{ steps.filter.outputs.image_control_api }}"
             image_dashboard_ui="${{ steps.filter.outputs.image_dashboard_ui }}"
@@ -78,6 +88,7 @@ jobs:
           fi
 
           echo "sdk_ts=${sdk_ts}" >> "$GITHUB_OUTPUT"
+          echo "crate_nexis_wasm_plugin=${crate_nexis_wasm_plugin}" >> "$GITHUB_OUTPUT"
           echo "image_rust_server=${image_rust_server}" >> "$GITHUB_OUTPUT"
           echo "image_control_api=${image_control_api}" >> "$GITHUB_OUTPUT"
           echo "image_dashboard_ui=${image_dashboard_ui}" >> "$GITHUB_OUTPUT"
@@ -387,6 +398,46 @@ jobs:
       - name: Publish SDK to npm
         working-directory: sdks/ts
         run: npm publish --access public --provenance --tag ${{ steps.npm_tag.outputs.tag }}
+
+  publish-crate-nexis-wasm-plugin:
+    needs: [changes, validate]
+    if: startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || inputs.publish_crate_nexis_wasm_plugin == true) && needs.changes.outputs.crate_nexis_wasm_plugin == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    environment: release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.89.0
+      - name: Read crate version
+        id: crate
+        shell: bash
+        run: |
+          version="$(grep -m1 '^version = ' plugins/rust/nexis_wasm_plugin/Cargo.toml | sed -E 's/version = \"([^\"]+)\"/\1/')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+      - name: Check if crate version already exists on crates.io
+        id: exists
+        shell: bash
+        run: |
+          if curl -fsS "https://crates.io/api/v1/crates/nexis_wasm_plugin/${{ steps.crate.outputs.version }}" > /dev/null; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "nexis_wasm_plugin@${{ steps.crate.outputs.version }} is already published."
+          else
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Dry-run publish
+        if: steps.exists.outputs.already_published != 'true'
+        run: cargo publish --dry-run --locked --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
+      - name: Authenticate with crates.io (trusted publishing)
+        if: steps.exists.outputs.already_published != 'true'
+        id: auth
+        uses: rust-lang/crates-io-auth-action@v1
+      - name: Publish crate to crates.io
+        if: steps.exists.outputs.already_published != 'true'
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        run: cargo publish --locked --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
 
   build-rust-server-binary:
     needs: validate

@@ -2,7 +2,15 @@
 name = "nexis_wasm_plugin"
 version = "0.1.5"
 edition = "2021"
+rust-version = "1.89"
 license = "Apache-2.0"
+description = "Rust helper crate for authoring Nexis runtime-loaded WASM room plugins."
+readme = "README.md"
+repository = "https://github.com/TriForMine/nexis"
+homepage = "https://triformine.github.io/nexis/"
+documentation = "https://docs.rs/nexis_wasm_plugin"
+keywords = ["nexis", "multiplayer", "wasm", "plugin"]
+categories = ["api-bindings", "game-development", "wasm"]
 authors = ["TriForMine <quentin@triformine.dev>"]
 
 [lib]
@@ -10,3 +18,6 @@ path = "src/lib.rs"
 
 [dependencies]
 serde_json = "1"
+
+[package.metadata.docs.rs]
+targets = ["wasm32-unknown-unknown"]
