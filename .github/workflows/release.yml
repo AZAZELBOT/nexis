@@ -428,7 +428,7 @@ jobs:
           fi
       - name: Dry-run publish
         if: steps.exists.outputs.already_published != 'true'
-        run: cargo publish --dry-run --locked --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
+        run: cargo publish --dry-run --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
       - name: Authenticate with crates.io (trusted publishing)
         if: steps.exists.outputs.already_published != 'true'
         id: auth
@@ -437,7 +437,7 @@ jobs:
         if: steps.exists.outputs.already_published != 'true'
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
-        run: cargo publish --locked --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
+        run: cargo publish --manifest-path plugins/rust/nexis_wasm_plugin/Cargo.toml
 
   build-rust-server-binary:
     needs: validate
